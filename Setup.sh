@@ -4,5 +4,5 @@ git submodule update --init --recursive
 # echo Building preprocessor
 # cd ./Tools/Preprocessor/
 # dotnet build --configuration Release
-cd ../../Scripts/
+cd ./Scripts/
 ./GenerateProjectsLinux.sh
