@@ -1,0 +1,60 @@
+name: CI Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        config: [Debug, Release, Dist]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Create Project Files
+      run: Invoke-Expression ".\Setup.bat"
+    - name: Set up msbuild
+      uses: microsoft/setup-msbuild@v2
+    - name: Build
+      run: msbuild Vulcanal.sln -t:rebuild -property:Configuration=${{ matrix.config }} -property:Platform=Win64
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4.4.3
+      with:
+        name: Vulcanal Windows x64 ${{ matrix.config }}
+        path: Build/Vulcanal/${{ matrix.config }}-windows-x86_64\
+
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config: [Debug, Release, Dist]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: Create Project Files
+      run: bash Setup.sh
+    - name: String Case
+      id: string
+      uses: ASzc/change-string-case-action@v6
+      with:
+        string: ${{ matrix.config }}
+    - name: Set up make
+      uses: pkgxdev/setup@v1
+      with:
+        +: gcc
+    - name: Build
+      run: make config=${{ steps.string.outputs.lowercase }}_linux -j8 # 8 jobs is hopefully a good middle-ground when we don't know how many cores the machine has.
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4.4.3
+      with:
+        name: Vulcanal Linux x64 ${{ matrix.config }}
+        path: ./Build/Vulcanal/${{ matrix.config }}-linux-x86_64/

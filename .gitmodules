@@ -1,0 +1,9 @@
+[submodule "Vulcanal/Vendor/imgui"]
+	path = Vulcanal/Vendor/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "Vulcanal/Vendor/stb"]
+	path = Vulcanal/Vendor/stb
+	url = https://github.com/nothings/stb.git
+[submodule "Vulcanal/Vendor/spdlog"]
+	path = Vulcanal/Vendor/spdlog
+	url = https://github.com/gabime/spdlog.git
