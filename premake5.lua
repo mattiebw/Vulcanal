@@ -120,7 +120,7 @@ project "Vulcanal"
 	 	prebuildcommands { "call \"../Scripts/RunPreprocessor.bat\" \"../../../../../Build/%{prj.name}/" .. outputdir .. "/Content/\"" }
 
 	filter "system:linux"
-		postbuildcommands { "{COPYFILE} \"./RunVulcanal.sh\" \"" .. path.getdirectory("path") .. "/../Build/%{prj.name}/" .. outputdir .. "/\"" }
+		prebuildcommands { "../Scripts/RunPreprocessor.sh \"../../../../../Build/%{prj.name}/" .. outputdir .. "/Content/\"" }
 
 	filter { "system:linux", "files:Vulcanal/Source/Vendor/stb.cpp" }
 		optimize "On" -- MW @hack: stb doesn't compile properly with GCC without optimizations (@credit https://git.suyu.dev/suyu/suyu/pulls/63)
