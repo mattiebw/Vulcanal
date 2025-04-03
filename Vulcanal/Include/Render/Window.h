@@ -37,6 +37,8 @@ public:
 
 	NODISCARD FORCEINLINE const std::string& GetTitle() const { return m_Specification.Title; }
 	NODISCARD FORCEINLINE const glm::ivec2&  GetSize() const { return m_Specification.Size; }
+	NODISCARD FORCEINLINE s32                GetWidth() const { return m_Specification.Size.x; }
+	NODISCARD FORCEINLINE s32                GetHeight() const { return m_Specification.Size.y; }
 	NODISCARD FORCEINLINE const glm::ivec2&  GetPosition() const { return m_Specification.Position; }
 	NODISCARD FORCEINLINE bool               IsFullscreen() const { return m_Specification.Fullscreen; }
 	NODISCARD FORCEINLINE bool               IsResizable() const { return m_Specification.Resizable; }

@@ -33,6 +33,7 @@
 
 // Vulkan
 #include "vulkan/vulkan.h"
+#include "vulkan/vk_enum_string_helper.h"
 
 // Vk-Bootstrap
 #include <vkbootstrap/VkBootstrap.h>
@@ -46,3 +47,4 @@
 #include "Core/VulcanalCore.h"
 #include "Core/VulcanalLog.h"
 #include "Core/Delegate.h"
+#include "Render/VulkanUtil.h"

@@ -26,7 +26,7 @@ bool Application::Initialise()
 {
 	VULC_ASSERT(!s_Instance && "Application already initialised?");
 	s_Instance = this;
-	
+
 	VULC_INFO("Initialising application: {}", m_Specification.Name);
 
 	if (!InitSDL())
@@ -44,30 +44,36 @@ bool Application::Initialise()
 		return false;
 	});
 
-	m_Window.OnKeyboardEvent.BindLambda([this] (const SDL_KeyboardEvent& event)
+	m_Window.OnKeyboardEvent.BindLambda([this](const SDL_KeyboardEvent& event)
 	{
 		Input::ProcessKeyboardInputEvent(event);
 		return false;
 	});
-	
-	m_Window.OnMouseButtonEvent.BindLambda([this] (const SDL_MouseButtonEvent& event)
+
+	m_Window.OnMouseButtonEvent.BindLambda([this](const SDL_MouseButtonEvent& event)
 	{
 		Input::ProcessMouseInputEvent(event);
 		return false;
 	});
 
-	m_Window.OnMouseMotionEvent.BindLambda([this] (const SDL_MouseMotionEvent& event)
+	m_Window.OnMouseMotionEvent.BindLambda([this](const SDL_MouseMotionEvent& event)
 	{
 		Input::ProcessMouseMotionEvent(event);
 		return false;
 	});
+
+	if (!m_Renderer.Init({.EnableValidationLayers = true, .App = this}))
+	{
+		// The renderer will do its own error logging.
+		return false;
+	}
 
 	if (!InitImGUI())
 	{
 		VULC_ERROR("Failed to initialise ImGUI");
 		return false;
 	}
-	
+
 	return true;
 }
 
@@ -90,7 +96,7 @@ void Application::Shutdown()
 	VULC_INFO("Shutting down application: {}", m_Specification.Name);
 
 	Input::Shutdown();
-	
+
 	if (m_Window.IsValid())
 		m_Window.Destroy();
 
