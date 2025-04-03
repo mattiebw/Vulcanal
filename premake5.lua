@@ -14,7 +14,7 @@ IncludeDir["imgui"] = "Vulcanal/Vendor/imgui/"
 IncludeDir["glm"] = "Vulcanal/Vendor/glm/Include"
 IncludeDir["stb"] = "Vulcanal/Vendor/stb"
 IncludeDir["entt"] = "Vulcanal/Vendor/entt"
-IncludeDir["vulkan"] = vulkansdk .. "/Include/"
+IncludeDir["vulkan"] = vulkansdk .. "/include/"
 IncludeDir["vkbootstrap"] = "Vulcanal/Vendor/vk-bootstrap/Include"
 IncludeDir["VMA"] = "Vulcanal/Vendor/VMA/Include"
 
