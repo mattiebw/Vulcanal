@@ -44,32 +44,46 @@ void Window::PollEvents()
 		switch (windowEvent.type)
 		{
 		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-			OnWindowClose.Execute();
-			break;
+			{
+				OnWindowClose.Execute();
+				break;
+			}
 		case SDL_EVENT_WINDOW_RESIZED:
-			glm::ivec2 newSize = {windowEvent.window.data1, windowEvent.window.data2};
-			m_Specification.Size = newSize;
-			OnWindowResize.Execute(newSize);
-			break;
+			{
+				glm::ivec2 newSize = {windowEvent.window.data1, windowEvent.window.data2};
+				m_Specification.Size = newSize;
+				OnWindowResize.Execute(newSize);
+				break;
+			}
 		case SDL_EVENT_WINDOW_MOVED:
-			glm::ivec2 newPos = {windowEvent.window.data1, windowEvent.window.data2};
-			m_Specification.Position = newPos;
-			OnWindowMove.Execute(newPos);
-			break;
+			{
+				glm::ivec2 newPos = {windowEvent.window.data1, windowEvent.window.data2};
+				m_Specification.Position = newPos;
+				OnWindowMove.Execute(newPos);
+				break;
+			}
 		case SDL_EVENT_KEY_UP:
 		case SDL_EVENT_KEY_DOWN:
-			OnKeyboardEvent.Execute(windowEvent.key);
-			break;
+			{
+				OnKeyboardEvent.Execute(windowEvent.key);
+				break;
+			}
 		case SDL_EVENT_MOUSE_BUTTON_UP:
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
-			OnMouseButtonEvent.Execute(windowEvent.button);
-			break;
+			{
+				OnMouseButtonEvent.Execute(windowEvent.button);
+				break;
+			}
 		case SDL_EVENT_MOUSE_MOTION:
-			OnMouseMotionEvent.Execute(windowEvent.motion);
-			break;
+			{
+				OnMouseMotionEvent.Execute(windowEvent.motion);
+				break;
+			}
 		case SDL_EVENT_MOUSE_WHEEL:
-			OnMouseWheelEvent.Execute(windowEvent.wheel);
-			break;
+			{
+				OnMouseWheelEvent.Execute(windowEvent.wheel);
+				break;
+			}
 		default:
 			break;
 		}
