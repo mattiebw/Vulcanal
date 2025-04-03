@@ -1,8 +1,9 @@
 @echo off
 echo Cloning submodules
 git submodule update --init --recursive
-@REM echo Building preprocessor
-@REM cd ./Tools/Preprocessor/
-@REM dotnet build --configuration Release
-cd Scripts/
+echo Building preprocessor
+cd ./Tools/Preprocessor/
+SET DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE=true
+dotnet build --configuration Release
+cd ../../Scripts/
 ./GenerateProjectsWindows.bat

@@ -1,0 +1,28 @@
+{
+  "IgnoredFilePatterns": [],
+  "LibraryCopies": {
+    "Windows": [
+        {
+            "RelativePath": "../Vulcanal/Vendor/SDL/Lib/Win64/SDL3.dll",
+            "OutputRelativePath": "./../"
+        }
+    ],
+    "Linux": [
+        {
+            "RelativePath": "../Vulcanal/Vendor/SDL/Lib/Linux64/libSDL3.so",
+            "OutputRelativePath": "./../"
+        },
+        {
+            "RelativePath": "../Vulcanal/Vendor/SDL/Lib/Linux64/libSDL3.so.0",
+            "OutputRelativePath": "./../"
+        },
+        {
+            "RelativePath": "../Vulcanal/Vendor/SDL/Lib/Linux64/libSDL3.so.0.2.9",
+            "OutputRelativePath": "./../"
+        }
+    ]
+  },
+  "ProcessorSettings": {
+    "MeshExtension": ".mesh"
+  }
+}
