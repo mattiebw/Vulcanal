@@ -81,6 +81,11 @@ project "Vulcanal"
 			-- "Vulcanal/Vendor/FMOD/Lib/Win64"
 		}
 
+		links
+		{
+			"vulkan-1"
+		}
+
 		-- links 
 		-- {
 		-- 	"steam_api64",
@@ -97,6 +102,11 @@ project "Vulcanal"
 			"Vulcanal/Vendor/SDL/Lib/Linux64",
 			-- "Vulcanal/Vendor/Steamworks/Lib/Linux64",
 			-- "Vulcanal/Vendor/FMOD/Lib/Linux64"
+		}
+
+		links
+		{
+			"vulkan"
 		}
 		
 		-- links 
@@ -118,7 +128,6 @@ project "Vulcanal"
 	{
 		"imgui",
 		"SDL3",
-		"vulkan-1",
 
 		-- MSDF
 		-- "msdf-atlas-gen",
