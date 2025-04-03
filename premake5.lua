@@ -163,7 +163,7 @@ filter "configurations:Release"
 	runtime "Release"
 
 filter "configurations:Dist"
-	defines { "VULC_DIST" }
+	defines { "VULC_DIST", "VULC_DISABLE_ASSERTS" }
 	kind "WindowedApp"
 	optimize "On"
 	symbols "Off"

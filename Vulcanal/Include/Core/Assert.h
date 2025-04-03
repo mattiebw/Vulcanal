@@ -177,12 +177,12 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 #define NULL_WHILE_LOOP_CONDITION (0)
 #endif
 
-#define VULC_ENABLED_ASSERT(cond, message, ...) \
+#define VULC_ENABLED_ASSERT(cond, ...) \
 	do { \
 		while (!(cond))\
 		{\
 			static AssertionData data = { false, 0, #cond, FullPathToFileName(__FILE__), __LINE__, __FUNCTION__, nullptr };\
-			const AssertState state = ReportAssertion(&data, message __VA_OPT__(,) ##__VA_ARGS__);\
+			const AssertState state = ReportAssertion(&data __VA_OPT__(,) ##__VA_ARGS__);\
 			\
 			if (state == AssertState::Retry) {\
 				continue; /* We'll retry the condition. Do you know the definition of insanity? */ \
@@ -193,14 +193,18 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 		}\
 	} while (NULL_WHILE_LOOP_CONDITION)
 
-#define VULC_DISABLED_ASSERT(cond, message, ...) \
+#define VULC_DISABLED_ASSERT(cond, ...) \
 	do { \
 		(void) sizeof((cond)); \
 	} while (NULL_WHILE_LOOP_CONDITION)
 
+// Checks are assertions that are always enabled, regardless of the build type.
+#define VULC_CHECK(cond, ...) \
+	VULC_ENABLED_ASSERT(cond, ##__VA_ARGS__)
+
 #ifndef VULC_DISABLE_ASSERTS
-#define VULC_ASSERT(cond, message, ...) \
-	VULC_ENABLED_ASSERT(cond, message, ##__VA_ARGS__)
+#define VULC_ASSERT(cond, ...) \
+	VULC_ENABLED_ASSERT(cond, ##__VA_ARGS__)
 #else
 #define VULC_ASSERT(cond, message, ...) \
 	VULC_DISABLED_ASSERT(cond, message, ##__VA_ARGS__)
