@@ -3,6 +3,8 @@
 #define SPDLOG_EOL ""
 #define FMT_UNICODE 0
 
+#define VULC_NO_IMGUI // temporarily disable ImGui, while we get the Vulkan renderer working
+
 // Utility functions and types
 #include <iostream>
 #include <memory>
@@ -19,7 +21,7 @@
 #include <unordered_set>
 
 // imgui
-#ifndef SIBOX_NO_IMGUI
+#ifndef VULC_NO_IMGUI
 #include <imgui.h>
 #endif
 
@@ -43,3 +45,4 @@
 #include <SDL3/SDL_assert.h>
 #include "Core/VulcanalCore.h"
 #include "Core/VulcanalLog.h"
+#include "Core/Delegate.h"
