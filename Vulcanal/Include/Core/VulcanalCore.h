@@ -97,8 +97,6 @@ constexpr Ref<T> CreateRef(Args &&... args)
 	return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
-#define VULC_ASSERT SDL_assert
-
 struct SemVer
 {
 	u16 Major;

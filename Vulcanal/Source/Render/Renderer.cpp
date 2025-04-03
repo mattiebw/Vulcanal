@@ -19,9 +19,9 @@ Renderer::~Renderer()
 bool Renderer::Init(RendererSpecification spec)
 {
 	m_Spec = std::move(spec);
-	VULC_ASSERT(m_Spec.App != nullptr && "Application must be set");
+	VULC_ASSERT(m_Spec.App != nullptr,  "Application must be set");
 	m_Window = &m_Spec.App->GetWindow();
-	VULC_ASSERT(m_Window && "Window must be created before initializing the renderer");
+	VULC_ASSERT(m_Window, "Window must be created before initializing the renderer");
 
 	if (!InitInstance())
 		return false;
@@ -236,7 +236,7 @@ VkBool32 Renderer::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      mes
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
 		VULC_TRACE("{}", message);
 
-	VULC_ASSERT(messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
+	VULC_ASSERT(messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, "Vulkan error occurred: {}", message);
 
 	return VK_FALSE;
 }

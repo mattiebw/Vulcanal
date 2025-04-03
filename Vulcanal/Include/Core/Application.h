@@ -18,6 +18,8 @@ public:
 	void Run();
 	void Shutdown();
 
+	bool OnWindowClosed();
+
 	void Close();
 	void ShowError(const std::string& message, const std::string& title = "Error") const;
 

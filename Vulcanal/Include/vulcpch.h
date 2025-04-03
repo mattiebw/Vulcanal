@@ -42,9 +42,13 @@
 // VMA
 #include <vk_mem_alloc.h>
 
+// fmt
+#include <spdlog/fmt/fmt.h>
+
 // Core project includes
-#include <SDL3/SDL_assert.h>
+#include "Core/VulcanalLog.h" // Include the logger first, so we can use it in the assertion macro.
+#include <SDL3/SDL_assert.h> // Even though we use our own assertion system, we need this for SDL_TriggerBreakpoint!
+#include "Core/Assert.h"
 #include "Core/VulcanalCore.h"
-#include "Core/VulcanalLog.h"
 #include "Core/Delegate.h"
 #include "Render/VulkanUtil.h"

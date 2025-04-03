@@ -18,13 +18,13 @@ Application::Application(ApplicationSpecification spec)
 	: m_Specification(std::move(spec)),
 	  m_Window(Window({.Title = m_Specification.Name, .Size = {1280, 720}, .Fullscreen = false, .Resizable = true}))
 {
-	VULC_ASSERT(!m_Specification.Name.empty() && "Application name cannot be empty");
-	VULC_ASSERT(m_Specification.Version.Packed() > 0 && "Application version must be greater than 0");
+	VULC_ASSERT(!m_Specification.Name.empty(), "Application name cannot be empty");
+	VULC_ASSERT(m_Specification.Version.Packed() > 0, "Application version must be greater than 0");
 }
 
 bool Application::Initialise()
 {
-	VULC_ASSERT(!s_Instance && "Application already initialised?");
+	VULC_ASSERT(!s_Instance, "Application already initialised?");
 	s_Instance = this;
 
 	VULC_INFO("Initialising application: {}", m_Specification.Name);
@@ -38,11 +38,7 @@ bool Application::Initialise()
 	Input::Init();
 
 	// Bindings to window events.
-	m_Window.OnWindowClose.BindLambda([this]
-	{
-		Close();
-		return false;
-	});
+	m_Window.OnWindowClose.BindMethod(this, &Application::OnWindowClosed);
 
 	m_Window.OnKeyboardEvent.BindLambda([this](const SDL_KeyboardEvent& event)
 	{
@@ -86,6 +82,9 @@ void Application::Run()
 		Input::PreUpdate();
 		m_Window.PollEvents();
 
+		static s32 theInteger = 5;
+		VULC_ASSERT(!Input::IsKeyDownThisFrame(Scancode::R), "DON'T PRESS R!! Static number: {}, window size: {}, window title: {}", theInteger, m_Window.GetSize(), m_Window.GetTitle());
+		
 		if (Input::IsKeyDownThisFrame(Scancode::Escape))
 			Close();
 	}
@@ -103,8 +102,17 @@ void Application::Shutdown()
 	s_Instance = nullptr;
 }
 
+bool Application::OnWindowClosed()
+{
+	Close();
+	return false;
+}
+
 void Application::Close()
 {
+	if (!m_Running)
+		return;
+	
 	if (!OnApplicationCloseRequested.Execute())
 		return;
 
