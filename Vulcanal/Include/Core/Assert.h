@@ -206,6 +206,6 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 #define VULC_ASSERT(cond, ...) \
 	VULC_ENABLED_ASSERT(cond, ##__VA_ARGS__)
 #else
-#define VULC_ASSERT(cond, message, ...) \
-	VULC_DISABLED_ASSERT(cond, message, ##__VA_ARGS__)
+#define VULC_ASSERT(cond, ...) \
+	VULC_DISABLED_ASSERT(cond, ##__VA_ARGS__)
 #endif
