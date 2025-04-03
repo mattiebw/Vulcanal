@@ -4,6 +4,8 @@ workspace "Vulcanal"
 	startproject "Vulcanal"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+vulkansdk = os.getenv("VULKAN_SDK")
+print("Vulkan SDK is at " .. vulkansdk)
 
 IncludeDir = {}
 IncludeDir["spdlog"] = "Vulcanal/Vendor/spdlog/include"
@@ -12,6 +14,9 @@ IncludeDir["imgui"] = "Vulcanal/Vendor/imgui/"
 IncludeDir["glm"] = "Vulcanal/Vendor/glm/Include"
 IncludeDir["stb"] = "Vulcanal/Vendor/stb"
 IncludeDir["entt"] = "Vulcanal/Vendor/entt"
+IncludeDir["vulkan"] = vulkansdk .. "/Include/"
+IncludeDir["vkbootstrap"] = "Vulcanal/Vendor/vk-bootstrap/Include"
+IncludeDir["VMA"] = "Vulcanal/Vendor/VMA/Include"
 
 group "Vendor"
     include "Vulcanal/Vendor/imgui.lua"
@@ -56,8 +61,16 @@ project "Vulcanal"
 		-- "%{IncludeDir.steamworks}",
 		-- "%{IncludeDir.fmod}",
 		"%{IncludeDir.entt}",
+		"%{IncludeDir.vulkan}",
+		"%{IncludeDir.vkbootstrap}",
+		"%{IncludeDir.VMA}",
 
 		"Vulcanal/Include"
+	}
+
+	libdirs
+	{
+		vulkansdk .. "/Lib/"	
 	}
 
 	filter "system:windows"
@@ -105,6 +118,7 @@ project "Vulcanal"
 	{
 		"imgui",
 		"SDL3",
+		"vulkan-1",
 
 		-- MSDF
 		-- "msdf-atlas-gen",

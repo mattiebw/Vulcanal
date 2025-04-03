@@ -29,6 +29,16 @@
 // glm
 #include <glm/glm.hpp>
 
+// Vulkan
+#include "vulkan/vulkan.h"
+
+// Vk-Bootstrap
+#include <vkbootstrap/VkBootstrap.h>
+#include <vkbootstrap/VkBootstrapDispatch.h>
+
+// VMA
+#include <vk_mem_alloc.h>
+
 // Core project includes
 #include <SDL3/SDL_assert.h>
 #include "Core/VulcanalCore.h"
