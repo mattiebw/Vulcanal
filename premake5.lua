@@ -120,7 +120,6 @@ project "Vulcanal"
 	 	prebuildcommands { "call \"../Scripts/RunPreprocessor.bat\" \"../../../../../Build/%{prj.name}/" .. outputdir .. "/Content/\"" }
 
 	filter "system:linux"
-		prebuildcommands { "../Scripts/RunPreprocessor.sh \"../../../../../Build/%{prj.name}/" .. outputdir .. "/Content/\"" }
 		postbuildcommands { "{COPYFILE} \"./RunVulcanal.sh\" \"" .. path.getdirectory("path") .. "/../Build/%{prj.name}/" .. outputdir .. "/\"" }
 
 	filter { "system:linux", "files:Vulcanal/Source/Vendor/stb.cpp" }

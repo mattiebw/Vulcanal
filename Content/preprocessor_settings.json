@@ -19,6 +19,10 @@
         {
             "RelativePath": "../Vulcanal/Vendor/SDL/Lib/Linux64/libSDL3.so.0.2.9",
             "OutputRelativePath": "./../"
+        },
+        {
+            "RelativePath": "../Vulcanal/RunVulcanal.sh",
+            "OutputRelativePath": "./../"
         }
     ]
   },
