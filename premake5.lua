@@ -70,7 +70,7 @@ project "Vulcanal"
 
 	libdirs
 	{
-		vulkansdk .. "/Lib/"	
+		vulkansdk .. "/lib/"	
 	}
 
 	filter "system:windows"
