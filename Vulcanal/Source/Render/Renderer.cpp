@@ -38,6 +38,9 @@ bool Renderer::Init(RendererSpecification spec)
 	PrintDeviceInfo();
 	if (!InitSwapchain())
 		return false;
+
+	m_Spec.App->GetWindow().OnWindowResize.BindMethod(this, &Renderer::OnWindowResize);
+	
 	if (!InitCommands())
 		return false;
 	if (!InitSyncStructures())
@@ -276,6 +279,13 @@ void Renderer::PrintDeviceInfo()
 	VULC_INFO("Chosen GPU:\n\tName: {}\n\tDriver Version: {}.{}.{}\n\tAPI Version: {}.{}.{}", properties.properties.deviceName,
 		VK_VERSION_MAJOR(properties.properties.driverVersion), VK_VERSION_MINOR(properties.properties.driverVersion), VK_VERSION_PATCH(properties.properties.driverVersion),
 		VK_VERSION_MAJOR(properties.properties.apiVersion), VK_VERSION_MINOR(properties.properties.apiVersion), VK_VERSION_PATCH(properties.properties.apiVersion));
+}
+
+bool Renderer::OnWindowResize(const glm::ivec2& newSize)
+{
+	DestroySwapchain();
+	CreateSwapchain(newSize.x, newSize.y);
+	return false;
 }
 
 bool Renderer::CreateSwapchain(u32 width, u32 height)

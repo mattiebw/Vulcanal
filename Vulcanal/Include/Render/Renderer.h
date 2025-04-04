@@ -46,6 +46,8 @@ protected:
 
 	void PrintDeviceInfo();
 
+	bool OnWindowResize(const glm::ivec2& newSize);
+
 	bool CreateSwapchain(u32 width, u32 height);
 	bool DestroySwapchain();
 
