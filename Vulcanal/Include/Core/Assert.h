@@ -12,19 +12,21 @@ enum class AssertState : uint8_t
 {
 	AlwaysIgnore,
 	Ignore,
+	Silence,
 	Retry,
 	Break,
-	Abort
+	Abort,
 };
 
 // Based on SDL_AssertData from SDL_assert.h.
 struct AssertionData
 {
 	bool        AlwaysIgnored;
+	bool        Silent;
 	uint16_t    TriggerCount;
+	int32_t     LineNumber;
 	const char* Condition;
 	const char* Filename;
-	int         LineNumber;
 	const char* Function;
 
 	// We keep an internal linked list of assertion datas, so we can generate an assertion report.
@@ -51,6 +53,10 @@ constexpr auto FullPathToFileName(const char* file)
 	return lastSlash ? lastSlash + 1 : file;
 }
 
+// This function will return the SDL window for the current application, if it exists.
+// We define this in a separate CPP file, as otherwise we would have a circular dependency.
+SDL_Window* GetAppWindow();
+
 // This function does all the heavy lifting for assertions.
 // It's pretty heavy, with lots of string operations and formatting, but we shouldn't be doing this often!
 template <typename... Args>
@@ -58,6 +64,7 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 {
 	// Okay, we've asserted! Now what?
 	// Firstly, is this assertion always ignored?
+	// TODO @mw: We can probably remove this, since the macro itself checks.
 	if (data->AlwaysIgnored)
 		return AssertState::AlwaysIgnore;
 
@@ -96,30 +103,36 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 	if (g_VulcanalLogger)
 		g_VulcanalLogger->error("{}" "\n", fullMessage);
 
+	// If we're a silent assertion, we don't want to show a message box.
+	if (data->Silent)
+		return AssertState::Silence;
+	
 	// Now, let's construct a message box.
 	SDL_MessageBoxData messageBoxData;
 	messageBoxData.flags   = SDL_MESSAGEBOX_ERROR;
 	messageBoxData.title   = "Assertion failed!";
 	messageBoxData.message = fullMessage.c_str();
-	messageBoxData.window  = nullptr;
+	messageBoxData.window  = GetAppWindow();
 
 	// We have 5 buttons: Ignore, Always Ignore, Retry, Break, and Abort.
 	// Pressing escape will retry, and pressing enter will break.
-	SDL_MessageBoxButtonData buttonData[5];
+	SDL_MessageBoxButtonData buttonData[6];
 	messageBoxData.buttons    = buttonData;
-	messageBoxData.numbuttons = 5;
+	messageBoxData.numbuttons = 6;
 	buttonData[0].buttonID    = 1;
 	buttonData[0].text        = "Ignore";
 	buttonData[1].buttonID    = 2;
 	buttonData[1].text        = "Always Ignore";
-	buttonData[2].buttonID    = 3;
-	buttonData[2].text        = "Retry";
-	buttonData[2].flags       = SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
-	buttonData[3].buttonID    = 4;
-	buttonData[3].text        = "Break";
-	buttonData[3].flags       = SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
-	buttonData[4].buttonID    = 5;
-	buttonData[4].text        = "Abort";
+	buttonData[2].buttonID    = 6;
+	buttonData[2].text        = "Silence";
+	buttonData[3].buttonID    = 3;
+	buttonData[3].text        = "Retry";
+	buttonData[3].flags       = SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+	buttonData[4].buttonID    = 4;
+	buttonData[4].text        = "Break";
+	buttonData[4].flags       = SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+	buttonData[5].buttonID    = 5;
+	buttonData[5].text        = "Abort";
 
 	// Dark message boxes! God, I love living in the future. It's linux and android exclusive, sadly!
 	SDL_MessageBoxColorScheme colorScheme;
@@ -161,6 +174,9 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 		// ABORT!!!!!
 		SDL_Quit(); // SDL calls this, so we will too. Sam knows best.
 		std::abort();
+	case 6:
+		data->Silent = true;
+		return AssertState::Silence;
 	default:
 		// Well this is awkward. We could assert here, but that would be a bit silly.
 		VULC_WARN("Invalid assertion button pressed: {}. How'd you manage that?", buttonPressed);
@@ -177,7 +193,7 @@ inline void PrintAssertionReport()
 		VULC_INFO("No assertions triggered.");
 		return;
 	}
-	
+
 	VULC_INFO("Assertions:");
 	while (current != nullptr)
 	{
@@ -196,11 +212,11 @@ inline void PrintAssertionReport()
 #define NULL_WHILE_LOOP_CONDITION (0)
 #endif
 
-#define VULC_ENABLED_ASSERT(cond, ...) \
+#define VULC_ENABLED_ASSERT(cond, silent, ...) \
 	do { \
-		while (!(cond))\
+		static AssertionData data = { false, silent, 0, __LINE__, #cond, FullPathToFileName(__FILE__), __FUNCTION__, nullptr };\
+		while (!data.AlwaysIgnored && !(cond))\
 		{\
-			static AssertionData data = { false, 0, #cond, FullPathToFileName(__FILE__), __LINE__, __FUNCTION__, nullptr };\
 			const AssertState state = ReportAssertion(&data __VA_OPT__(,) ##__VA_ARGS__);\
 			\
 			if (state == AssertState::Retry) {\
@@ -219,12 +235,18 @@ inline void PrintAssertionReport()
 
 // Checks are assertions that are always enabled, regardless of the build type.
 #define VULC_CHECK(cond, ...) \
-	VULC_ENABLED_ASSERT(cond, ##__VA_ARGS__)
+	VULC_ENABLED_ASSERT(cond, false, ##__VA_ARGS__)
+#define VULC_CHECK_SILENT(cond, ...) \
+	VULC_ENABLED_ASSERT(cond, true, ##__VA_ARGS__)
 
 #ifndef VULC_DISABLE_ASSERTS
 #define VULC_ASSERT(cond, ...) \
-	VULC_ENABLED_ASSERT(cond, ##__VA_ARGS__)
+	VULC_ENABLED_ASSERT(cond, false, ##__VA_ARGS__)
+#define VULC_ASSERT_SILENT(cond, ...) \
+	VULC_ENABLED_ASSERT(cond, true, ##__VA_ARGS__)
 #else
 #define VULC_ASSERT(cond, ...) \
+	VULC_DISABLED_ASSERT(cond, ##__VA_ARGS__)
+#define VULC_ASSERT_SILENT(cond, ...) \
 	VULC_DISABLED_ASSERT(cond, ##__VA_ARGS__)
 #endif
