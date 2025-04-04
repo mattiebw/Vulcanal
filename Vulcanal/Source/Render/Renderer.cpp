@@ -48,6 +48,12 @@ bool Renderer::Init(RendererSpecification spec)
 
 void Renderer::Shutdown()
 {
+	if (m_Device)
+		vkDeviceWaitIdle(m_Device);
+
+	for (s32 i = 0; i < FramesInFlight; i++)
+		ShutdownFrameData(m_Frames[i]);
+	
 	DestroySwapchain();
 	
 	if (m_Surface)
@@ -134,14 +140,25 @@ bool Renderer::InitDevice()
 	auto               logicalDeviceResult = deviceBuilder.build();
 	if (!logicalDeviceResult.has_value())
 	{
-		m_Spec.App->ShowError(fmt::format("Failed to create Vulkan device: {}", logicalDeviceResult.error().message()),
-		                      "Vulkan Error");
+		m_Spec.App->ShowError(fmt::format("Failed to select Vulkan logical device: {}", logicalDeviceResult.error().message()),
+							  "Vulkan Error");
 		return false;
 	}
 
 	const auto& logicalDevice = logicalDeviceResult.value();
 	m_GPU                     = device.value().physical_device;
 	m_Device                  = logicalDevice.device;
+
+	// Now, initialise the queue and queue family.
+	auto queueResult = logicalDevice.get_queue(vkb::QueueType::graphics);
+	if (!queueResult.has_value())
+	{
+		m_Spec.App->ShowError(fmt::format("Failed to create Vulkan queue: {}", queueResult.error().message()),
+							  "Vulkan Error");
+		return false;
+	}
+	m_GraphicsQueue = queueResult.value();
+	m_GraphicsQueueFamily = logicalDevice.get_queue_index(vkb::QueueType::graphics).value();
 
 	return true;
 }
@@ -156,6 +173,21 @@ bool Renderer::InitSwapchain()
 
 bool Renderer::InitCommands()
 {
+	// Basic creation info for our command pools.
+	// We want to be able to reset individual command buffers, not just the whole pool.
+	VkCommandPoolCreateInfo commandPoolInfo = CreateCommandPoolCreateInfo(m_GraphicsQueueFamily,
+		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+	for (s32 i = 0; i < FramesInFlight; i++)
+	{
+		// Create our command pool...
+		VK_CHECK(vkCreateCommandPool(m_Device, &commandPoolInfo, nullptr, &m_Frames[i].CommandPool));
+
+		// Finally, create our command buffers.
+		VkCommandBufferAllocateInfo bufferInfo = CreateCommandBufferAllocateInfo(m_Frames[i].CommandPool, true);
+		VK_CHECK(vkAllocateCommandBuffers(m_Device, &bufferInfo, &m_Frames[i].MainCommandBuffer));
+	}
+	
 	return true;
 }
 
@@ -227,6 +259,15 @@ bool Renderer::DestroySwapchain()
 	m_SwapchainImages.clear();
 
 	return true;
+}
+
+void Renderer::ShutdownFrameData(FrameData& frameData) const
+{
+	if (frameData.CommandPool)
+		vkDestroyCommandPool(m_Device, frameData.CommandPool, nullptr);
+
+	frameData.CommandPool = nullptr;
+	frameData.MainCommandBuffer = nullptr;
 }
 
 VkBool32 Renderer::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,

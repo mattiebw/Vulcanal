@@ -10,6 +10,14 @@ struct RendererSpecification
 	Application* App                    = nullptr;
 };
 
+struct FrameData
+{
+	VkCommandPool CommandPool = nullptr;
+	VkCommandBuffer MainCommandBuffer = nullptr;
+};
+
+constexpr u16 FramesInFlight = 2;
+
 class Renderer
 {
 public:
@@ -36,6 +44,13 @@ protected:
 	bool CreateSwapchain(u32 width, u32 height);
 	bool DestroySwapchain();
 
+	void ShutdownFrameData(FrameData& frameData) const;
+
+	NODISCARD FORCEINLINE FrameData& GetCurrentFrame()
+	{
+		return m_Frames[m_FrameIndex % FramesInFlight];
+	}
+
 	static VkBool32 DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
 	                              VkDebugUtilsMessageTypeFlagsEXT             messageType,
 	                              const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -56,6 +71,12 @@ protected:
 	VkExtent2D               m_SwapchainExtent;
 	std::vector<VkImage>     m_SwapchainImages;
 	std::vector<VkImageView> m_SwapchainImageViews;
+
+	// Frame state data
+	u64 m_FrameIndex = 0;
+	std::array<FrameData, FramesInFlight> m_Frames;
+	VkQueue m_GraphicsQueue;
+	u32 m_GraphicsQueueFamily;
 
 	RendererSpecification m_Spec;
 };

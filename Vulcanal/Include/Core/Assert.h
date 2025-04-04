@@ -94,7 +94,7 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 		}
 	}
 
-	// We'll format our messages using fmt.
+	// We'll format our messages using formatting functions.
 	std::string formattedMessage = fmt::vformat(message, fmt::make_format_args(std::forward<Args>(args)...));
 	std::string fullMessage      = fmt::format("Assertion failed: \"{}\" in {} at {}:{}\n\n{}\n", data->Condition,
 	                                      data->Function, data->Filename, data->LineNumber, formattedMessage);
