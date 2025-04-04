@@ -31,6 +31,8 @@ protected:
 	bool InitCommands();
 	bool InitSyncStructures();
 
+	void PrintDeviceInfo();
+
 	bool CreateSwapchain(u32 width, u32 height);
 	bool DestroySwapchain();
 

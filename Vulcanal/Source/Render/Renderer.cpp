@@ -35,6 +35,7 @@ bool Renderer::Init(RendererSpecification spec)
 
 	if (!InitDevice())
 		return false;
+	PrintDeviceInfo();
 	if (!InitSwapchain())
 		return false;
 	if (!InitCommands())
@@ -161,6 +162,17 @@ bool Renderer::InitCommands()
 bool Renderer::InitSyncStructures()
 {
 	return true;
+}
+
+void Renderer::PrintDeviceInfo()
+{
+	VkPhysicalDeviceProperties2 properties = {};
+	properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	vkGetPhysicalDeviceProperties2(m_GPU, &properties);
+
+	VULC_INFO("Chosen GPU:\n\tName: {}\n\tDriver Version: {}.{}.{}\n\tAPI Version: {}.{}.{}", properties.properties.deviceName,
+		VK_VERSION_MAJOR(properties.properties.driverVersion), VK_VERSION_MINOR(properties.properties.driverVersion), VK_VERSION_PATCH(properties.properties.driverVersion),
+		VK_VERSION_MAJOR(properties.properties.apiVersion), VK_VERSION_MINOR(properties.properties.apiVersion), VK_VERSION_PATCH(properties.properties.apiVersion));
 }
 
 bool Renderer::CreateSwapchain(u32 width, u32 height)
