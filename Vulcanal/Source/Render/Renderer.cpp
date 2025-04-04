@@ -57,6 +57,9 @@ void Renderer::Render()
 	VK_CHECK(vkWaitForFences(m_Device, 1, &frame.RenderFence, true, 1000000000));
 	VK_CHECK(vkResetFences(m_Device, 1, &frame.RenderFence));
 
+	// Perform any pending deletions from our frame.
+	frame.DeletionQueue.Flush();
+
 	// Let's get our swapchain image.
 	u32 swapchainImageIndex = 0;
 	VK_CHECK(vkAcquireNextImageKHR(m_Device, m_Swapchain, 1000000000, frame.SwapchainSemaphore, nullptr, &swapchainImageIndex));
@@ -116,6 +119,8 @@ void Renderer::Shutdown()
 
 	for (s32 i = 0; i < FramesInFlight; i++)
 		ShutdownFrameData(m_Frames[i]);
+
+	m_DeletionQueue.Flush();
 	
 	DestroySwapchain();
 	
@@ -355,7 +360,12 @@ void Renderer::ShutdownFrameData(FrameData& frameData) const
 		vkDestroySemaphore(m_Device, frameData.RenderSemaphore, nullptr);
 
 	frameData.CommandPool = nullptr;
+	frameData.RenderFence = nullptr;
+	frameData.SwapchainSemaphore = nullptr;
+	frameData.RenderSemaphore = nullptr;
 	frameData.MainCommandBuffer = nullptr;
+
+	frameData.DeletionQueue.Flush();
 }
 
 VkBool32 Renderer::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,

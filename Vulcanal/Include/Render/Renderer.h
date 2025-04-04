@@ -18,6 +18,8 @@ struct FrameData
 	VkSemaphore SwapchainSemaphore = nullptr;
 	VkSemaphore RenderSemaphore = nullptr;
 	VkFence RenderFence = nullptr;
+
+	DeletionQueue DeletionQueue;
 };
 
 constexpr u16 FramesInFlight = 2;
@@ -63,6 +65,8 @@ protected:
 	                              const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 	                              void*                                       pUserData);
 
+	DeletionQueue m_DeletionQueue;
+	
 	// Core vulkan objects
 	Window*                  m_Window;
 	vkb::Instance            m_VKBInstance;

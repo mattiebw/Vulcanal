@@ -196,3 +196,22 @@ constexpr u16 crc16(std::string_view str)
 		crc = (crc >> 8) ^ crc_table[(crc ^ c) & 0xff];
 	return crc ^ 0xffff;
 }
+
+struct DeletionQueue
+{
+	void Defer(std::function<void()>&& func)
+	{
+		m_Deleters.push_back(std::move(func));
+	}
+
+	void Flush()
+	{
+		for (auto it = m_Deleters.rbegin(); it != m_Deleters.rend(); ++it)
+			(*it)();
+		
+		m_Deleters.clear();
+	}
+	
+protected:
+	std::deque<std::function<void()>> m_Deleters;
+};
