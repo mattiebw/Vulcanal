@@ -168,6 +168,25 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 	}
 }
 
+inline void PrintAssertionReport()
+{
+	AssertionData* current = g_AssertionDataList;
+
+	if (current == nullptr)
+	{
+		VULC_INFO("No assertions triggered.");
+		return;
+	}
+	
+	VULC_INFO("Assertions:");
+	while (current != nullptr)
+	{
+		VULC_INFO("\"{}\" ({} at {}:{}) - Triggered {} times", current->Condition, current->Function,
+		          current->Filename, current->LineNumber, current->TriggerCount);
+		current = current->Next;
+	}
+}
+
 // From SDL_assert.h:
 #if defined(_MSC_VER)  /* Avoid /W4 warnings. */
 /* "while (0,0)" fools Microsoft's compiler's /W4 warning level into thinking

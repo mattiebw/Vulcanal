@@ -83,8 +83,11 @@ void Application::Run()
 		m_Window.PollEvents();
 
 		static s32 theInteger = 5;
-		VULC_ASSERT(!Input::IsKeyDownThisFrame(Scancode::R), "DON'T PRESS R!! Static number: {}, window size: {}, window title: {}", theInteger, m_Window.GetSize(), m_Window.GetTitle());
-		VULC_ASSERT(!Input::IsKeyDownThisFrame(Scancode::B));
+		VULC_CHECK(!Input::IsKeyDownThisFrame(Scancode::R), "DON'T PRESS R!! Static number: {}, window size: {}, window title: {}", theInteger, m_Window.GetSize(), m_Window.GetTitle());
+		VULC_CHECK(!Input::IsKeyDownThisFrame(Scancode::B));
+
+		if (Input::IsKeyDownThisFrame(Scancode::A))
+			PrintAssertionReport();
 		
 		if (Input::IsKeyDownThisFrame(Scancode::Escape))
 			Close();
