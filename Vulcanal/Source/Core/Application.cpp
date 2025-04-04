@@ -91,6 +91,8 @@ void Application::Run()
 		
 		if (Input::IsKeyDownThisFrame(Scancode::Escape))
 			Close();
+
+		m_Renderer.Render();
 	}
 }
 

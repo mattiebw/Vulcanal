@@ -46,6 +46,66 @@ bool Renderer::Init(RendererSpecification spec)
 	return true;
 }
 
+void Renderer::Render()
+{
+	FrameData& frame = GetCurrentFrame();
+
+	// Let's wait for our render fence.
+	VK_CHECK(vkWaitForFences(m_Device, 1, &frame.RenderFence, true, 1000000000));
+	VK_CHECK(vkResetFences(m_Device, 1, &frame.RenderFence));
+
+	// Let's get our swapchain image.
+	u32 swapchainImageIndex = 0;
+	VK_CHECK(vkAcquireNextImageKHR(m_Device, m_Swapchain, 1000000000, frame.SwapchainSemaphore, nullptr, &swapchainImageIndex));
+
+	// Reset our command buffer.
+	VkCommandBuffer commandBuffer = frame.MainCommandBuffer;
+	VK_CHECK(vkResetCommandBuffer(commandBuffer, 0));
+
+	// Begin our command buffer.
+	VkCommandBufferBeginInfo beginInfo = CreateCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+	// Transition our swapchain image.
+	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+	// Let's get our clear colour.
+	VkClearColorValue clearValue;
+	float flash = std::abs(std::sin(m_FrameIndex / 120.f));
+	clearValue = { { 0.0f, 0.0f, flash, 1.0f } };
+
+	VkImageSubresourceRange clearRange = ImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+
+	vkCmdClearColorImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
+
+	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+	VK_CHECK(vkEndCommandBuffer(commandBuffer));
+
+	VkCommandBufferSubmitInfo cmdInfo = CreateCommandBufferSubmitInfo(commandBuffer);
+	VkSemaphoreSubmitInfo waitInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, frame.SwapchainSemaphore);
+	VkSemaphoreSubmitInfo signalInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, frame.RenderSemaphore);
+
+	VkSubmitInfo2 submit = CreateSubmitInfo(&cmdInfo, &waitInfo, &signalInfo);
+
+	VK_CHECK(vkQueueSubmit2(m_GraphicsQueue, 1, &submit, frame.RenderFence));
+
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext = nullptr;
+	presentInfo.pSwapchains = &m_Swapchain;
+	presentInfo.swapchainCount = 1;
+
+	presentInfo.pWaitSemaphores = &frame.RenderSemaphore;
+	presentInfo.waitSemaphoreCount = 1;
+
+	presentInfo.pImageIndices = &swapchainImageIndex;
+
+	VK_CHECK(vkQueuePresentKHR(m_GraphicsQueue, &presentInfo));
+
+	m_FrameIndex++;
+}
+
 void Renderer::Shutdown()
 {
 	if (m_Device)
@@ -193,6 +253,17 @@ bool Renderer::InitCommands()
 
 bool Renderer::InitSyncStructures()
 {
+	VkFenceCreateInfo fenceInfo = CreateFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+	VkSemaphoreCreateInfo semaphoreInfo = CreateSemaphoreCreateInfo();
+
+	for (s32 i = 0; i < FramesInFlight; i++)
+	{
+		VK_CHECK(vkCreateFence(m_Device, &fenceInfo, nullptr, &m_Frames[i].RenderFence));
+
+		VK_CHECK(vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_Frames[i].RenderSemaphore));
+		VK_CHECK(vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_Frames[i].SwapchainSemaphore));
+	}
+	
 	return true;
 }
 
@@ -265,6 +336,13 @@ void Renderer::ShutdownFrameData(FrameData& frameData) const
 {
 	if (frameData.CommandPool)
 		vkDestroyCommandPool(m_Device, frameData.CommandPool, nullptr);
+
+	if (frameData.RenderFence)
+		vkDestroyFence(m_Device, frameData.RenderFence, nullptr);
+	if (frameData.SwapchainSemaphore)
+		vkDestroySemaphore(m_Device, frameData.SwapchainSemaphore, nullptr);
+	if (frameData.RenderSemaphore)
+		vkDestroySemaphore(m_Device, frameData.RenderSemaphore, nullptr);
 
 	frameData.CommandPool = nullptr;
 	frameData.MainCommandBuffer = nullptr;

@@ -14,6 +14,10 @@ struct FrameData
 {
 	VkCommandPool CommandPool = nullptr;
 	VkCommandBuffer MainCommandBuffer = nullptr;
+
+	VkSemaphore SwapchainSemaphore = nullptr;
+	VkSemaphore RenderSemaphore = nullptr;
+	VkFence RenderFence = nullptr;
 };
 
 constexpr u16 FramesInFlight = 2;
@@ -30,6 +34,7 @@ public:
 	Renderer& operator=(Renderer&& other) noexcept = delete;
 
 	bool Init(RendererSpecification spec);
+	void Render();
 	void Shutdown();
 
 protected:
