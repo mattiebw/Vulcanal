@@ -71,8 +71,8 @@ void Renderer::Render()
 
 	// Let's get our clear colour.
 	VkClearColorValue clearValue;
-	float flash = std::abs(std::sin(m_FrameIndex / 120.f));
-	clearValue = { { 0.0f, 0.0f, flash, 1.0f } };
+	glm::vec3 color = MathUtil::HSVToRGB(glm::vec3(static_cast<float>(m_FrameIndex % 360) / 360, 1.f, 1.f));
+	clearValue = { { color.x, color.y, color.z, 1.0f } };
 
 	VkImageSubresourceRange clearRange = ImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
 
