@@ -45,6 +45,7 @@ protected:
 	bool InitSwapchain();
 	bool InitCommands();
 	bool InitSyncStructures();
+	bool InitAllocator();
 
 	void PrintDeviceInfo();
 
@@ -75,6 +76,7 @@ protected:
 	VkPhysicalDevice         m_GPU;
 	VkDevice                 m_Device;
 	VkSurfaceKHR             m_Surface;
+	VmaAllocator             m_Allocator;
 
 	// Swapchain objects
 	VkSwapchainKHR           m_Swapchain;

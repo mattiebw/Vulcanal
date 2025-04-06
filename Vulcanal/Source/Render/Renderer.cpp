@@ -19,7 +19,7 @@ Renderer::~Renderer()
 bool Renderer::Init(RendererSpecification spec)
 {
 	m_Spec = std::move(spec);
-	VULC_ASSERT(m_Spec.App != nullptr,  "Application must be set");
+	VULC_ASSERT(m_Spec.App != nullptr, "Application must be set");
 	m_Window = &m_Spec.App->GetWindow();
 	VULC_ASSERT(m_Window, "Window must be created before initializing the renderer");
 
@@ -40,7 +40,7 @@ bool Renderer::Init(RendererSpecification spec)
 		return false;
 
 	m_Spec.App->GetWindow().OnWindowResize.BindMethod(this, &Renderer::OnWindowResize);
-	
+
 	if (!InitCommands())
 		return false;
 	if (!InitSyncStructures())
@@ -62,7 +62,9 @@ void Renderer::Render()
 
 	// Let's get our swapchain image.
 	u32 swapchainImageIndex = 0;
-	VK_CHECK(vkAcquireNextImageKHR(m_Device, m_Swapchain, 1000000000, frame.SwapchainSemaphore, nullptr, &swapchainImageIndex));
+	VK_CHECK(
+		vkAcquireNextImageKHR(m_Device, m_Swapchain, 1000000000, frame.SwapchainSemaphore, nullptr, &swapchainImageIndex
+		));
 
 	// Reset our command buffer.
 	VkCommandBuffer commandBuffer = frame.MainCommandBuffer;
@@ -73,36 +75,41 @@ void Renderer::Render()
 	VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
 	// Transition our swapchain image.
-	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED,
+	                VK_IMAGE_LAYOUT_GENERAL);
 
 	// Let's get our clear colour.
 	VkClearColorValue clearValue;
-	glm::vec3 color = MathUtil::HSVToRGB(glm::vec3(static_cast<float>(m_FrameIndex % 360) / 360, 1.f, 1.f));
-	clearValue = { { color.x, color.y, color.z, 1.0f } };
+	glm::vec3         color = MathUtil::HSVToRGB(glm::vec3(static_cast<float>(m_FrameIndex % 360) / 360, 1.f, 1.f));
+	clearValue              = {{color.x, color.y, color.z, 1.0f}};
 
 	VkImageSubresourceRange clearRange = ImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
 
-	vkCmdClearColorImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
+	vkCmdClearColorImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1,
+	                     &clearRange);
 
-	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL,
+	                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
 	VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
-	VkCommandBufferSubmitInfo cmdInfo = CreateCommandBufferSubmitInfo(commandBuffer);
-	VkSemaphoreSubmitInfo waitInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR, frame.SwapchainSemaphore);
-	VkSemaphoreSubmitInfo signalInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, frame.RenderSemaphore);
+	VkCommandBufferSubmitInfo cmdInfo  = CreateCommandBufferSubmitInfo(commandBuffer);
+	VkSemaphoreSubmitInfo     waitInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
+	                                                           frame.SwapchainSemaphore);
+	VkSemaphoreSubmitInfo signalInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+	                                                             frame.RenderSemaphore);
 
 	VkSubmitInfo2 submit = CreateSubmitInfo(&cmdInfo, &waitInfo, &signalInfo);
 
 	VK_CHECK(vkQueueSubmit2(m_GraphicsQueue, 1, &submit, frame.RenderFence));
 
 	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.pNext = nullptr;
-	presentInfo.pSwapchains = &m_Swapchain;
-	presentInfo.swapchainCount = 1;
+	presentInfo.sType            = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext            = nullptr;
+	presentInfo.pSwapchains      = &m_Swapchain;
+	presentInfo.swapchainCount   = 1;
 
-	presentInfo.pWaitSemaphores = &frame.RenderSemaphore;
+	presentInfo.pWaitSemaphores    = &frame.RenderSemaphore;
 	presentInfo.waitSemaphoreCount = 1;
 
 	presentInfo.pImageIndices = &swapchainImageIndex;
@@ -121,9 +128,9 @@ void Renderer::Shutdown()
 		ShutdownFrameData(m_Frames[i]);
 
 	m_DeletionQueue.Flush();
-	
+
 	DestroySwapchain();
-	
+
 	if (m_Surface)
 	{
 		vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
@@ -134,7 +141,7 @@ void Renderer::Shutdown()
 	{
 		vkDestroyDevice(m_Device, nullptr);
 		m_Device = nullptr;
-		m_GPU = nullptr;
+		m_GPU    = nullptr;
 	}
 
 	if (m_DebugMessenger)
@@ -208,8 +215,9 @@ bool Renderer::InitDevice()
 	auto               logicalDeviceResult = deviceBuilder.build();
 	if (!logicalDeviceResult.has_value())
 	{
-		m_Spec.App->ShowError(fmt::format("Failed to select Vulkan logical device: {}", logicalDeviceResult.error().message()),
-							  "Vulkan Error");
+		m_Spec.App->ShowError(
+			fmt::format("Failed to select Vulkan logical device: {}", logicalDeviceResult.error().message()),
+			"Vulkan Error");
 		return false;
 	}
 
@@ -222,10 +230,10 @@ bool Renderer::InitDevice()
 	if (!queueResult.has_value())
 	{
 		m_Spec.App->ShowError(fmt::format("Failed to create Vulkan queue: {}", queueResult.error().message()),
-							  "Vulkan Error");
+		                      "Vulkan Error");
 		return false;
 	}
-	m_GraphicsQueue = queueResult.value();
+	m_GraphicsQueue       = queueResult.value();
 	m_GraphicsQueueFamily = logicalDevice.get_queue_index(vkb::QueueType::graphics).value();
 
 	return true;
@@ -235,7 +243,7 @@ bool Renderer::InitSwapchain()
 {
 	if (!CreateSwapchain(m_Window->GetWidth(), m_Window->GetHeight()))
 		return false;
-	
+
 	return true;
 }
 
@@ -244,7 +252,7 @@ bool Renderer::InitCommands()
 	// Basic creation info for our command pools.
 	// We want to be able to reset individual command buffers, not just the whole pool.
 	VkCommandPoolCreateInfo commandPoolInfo = CreateCommandPoolCreateInfo(m_GraphicsQueueFamily,
-		VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+	                                                                      VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 	for (s32 i = 0; i < FramesInFlight; i++)
 	{
@@ -255,13 +263,13 @@ bool Renderer::InitCommands()
 		VkCommandBufferAllocateInfo bufferInfo = CreateCommandBufferAllocateInfo(m_Frames[i].CommandPool, true);
 		VK_CHECK(vkAllocateCommandBuffers(m_Device, &bufferInfo, &m_Frames[i].MainCommandBuffer));
 	}
-	
+
 	return true;
 }
 
 bool Renderer::InitSyncStructures()
 {
-	VkFenceCreateInfo fenceInfo = CreateFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+	VkFenceCreateInfo     fenceInfo     = CreateFenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
 	VkSemaphoreCreateInfo semaphoreInfo = CreateSemaphoreCreateInfo();
 
 	for (s32 i = 0; i < FramesInFlight; i++)
@@ -271,19 +279,47 @@ bool Renderer::InitSyncStructures()
 		VK_CHECK(vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_Frames[i].RenderSemaphore));
 		VK_CHECK(vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_Frames[i].SwapchainSemaphore));
 	}
-	
+
+	return true;
+}
+
+bool Renderer::InitAllocator()
+{
+	VmaAllocatorCreateInfo allocatorInfo = {};
+	allocatorInfo.physicalDevice         = m_GPU;
+	allocatorInfo.device                 = m_Device;
+	allocatorInfo.instance               = m_Instance;
+	allocatorInfo.vulkanApiVersion       = VK_API_VERSION_1_3;
+	allocatorInfo.flags                  = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+	if (auto result = vmaCreateAllocator(&allocatorInfo, &m_Allocator); result != VK_SUCCESS)
+	{
+		m_Spec.App->ShowError(fmt::format("Failed to create Vulkan queue: {}", string_VkResult(result)),
+		                      "Vulkan Error");
+		return false;
+	}
+
+	m_DeletionQueue.Defer([&]() {
+		vmaDestroyAllocator(m_Allocator);
+		m_Allocator = nullptr;
+	});
+
 	return true;
 }
 
 void Renderer::PrintDeviceInfo()
 {
 	VkPhysicalDeviceProperties2 properties = {};
-	properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	properties.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
 	vkGetPhysicalDeviceProperties2(m_GPU, &properties);
 
-	VULC_INFO("Chosen GPU:\n\tName: {}\n\tDriver Version: {}.{}.{}\n\tAPI Version: {}.{}.{}", properties.properties.deviceName,
-		VK_VERSION_MAJOR(properties.properties.driverVersion), VK_VERSION_MINOR(properties.properties.driverVersion), VK_VERSION_PATCH(properties.properties.driverVersion),
-		VK_VERSION_MAJOR(properties.properties.apiVersion), VK_VERSION_MINOR(properties.properties.apiVersion), VK_VERSION_PATCH(properties.properties.apiVersion));
+	VULC_INFO("Chosen GPU:\n\tName: {}\n\tDriver Version: {}.{}.{}\n\tAPI Version: {}.{}.{}",
+	          properties.properties.deviceName,
+	          VK_VERSION_MAJOR(properties.properties.driverVersion),
+	          VK_VERSION_MINOR(properties.properties.driverVersion),
+	          VK_VERSION_PATCH(properties.properties.driverVersion),
+	          VK_VERSION_MAJOR(properties.properties.apiVersion),
+	          VK_VERSION_MINOR(properties.properties.apiVersion),
+	          VK_VERSION_PATCH(properties.properties.apiVersion));
 }
 
 bool Renderer::OnWindowResize(const glm::ivec2& newSize)
@@ -338,7 +374,7 @@ bool Renderer::DestroySwapchain()
 {
 	if (!m_Swapchain)
 		return true;
-	
+
 	vkDestroySwapchainKHR(m_Device, m_Swapchain, nullptr);
 
 	for (auto imageView : m_SwapchainImageViews)
@@ -361,11 +397,11 @@ void Renderer::ShutdownFrameData(FrameData& frameData) const
 	if (frameData.RenderSemaphore)
 		vkDestroySemaphore(m_Device, frameData.RenderSemaphore, nullptr);
 
-	frameData.CommandPool = nullptr;
-	frameData.RenderFence = nullptr;
+	frameData.CommandPool        = nullptr;
+	frameData.RenderFence        = nullptr;
 	frameData.SwapchainSemaphore = nullptr;
-	frameData.RenderSemaphore = nullptr;
-	frameData.MainCommandBuffer = nullptr;
+	frameData.RenderSemaphore    = nullptr;
+	frameData.MainCommandBuffer  = nullptr;
 
 	frameData.DeletionQueue.Flush();
 }
