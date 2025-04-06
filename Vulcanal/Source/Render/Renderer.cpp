@@ -288,6 +288,8 @@ void Renderer::PrintDeviceInfo()
 
 bool Renderer::OnWindowResize(const glm::ivec2& newSize)
 {
+	VULC_ASSERT(m_Device);
+	vkDeviceWaitIdle(m_Device);
 	DestroySwapchain();
 	CreateSwapchain(newSize.x, newSize.y);
 	return false;
@@ -374,8 +376,8 @@ VkBool32 Renderer::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      mes
                                  void*                                       pUserData)
 {
 	std::string message = fmt::format("Vulkan Debug {} ({}): {}",
-	                                  string_VkDebugUtilsMessageSeverityFlagBitsEXT(messageSeverity),
-	                                  string_VkDebugUtilsMessageTypeFlagsEXT(messageType),
+	                                  VulkanSeverityToString(messageSeverity),
+	                                  VulkanMessageTypeToString(messageType),
 	                                  pCallbackData->pMessage);
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
@@ -387,7 +389,7 @@ VkBool32 Renderer::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      mes
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
 		VULC_TRACE("{}", message);
 
-	VULC_ASSERT(messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, "Vulkan error occurred: {}", message);
+	VULC_ASSERT(messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, "{}", message);
 
 	return VK_FALSE;
 }

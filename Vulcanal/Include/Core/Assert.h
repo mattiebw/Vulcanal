@@ -53,6 +53,42 @@ constexpr auto FullPathToFileName(const char* file)
 	return lastSlash ? lastSlash + 1 : file;
 }
 
+inline std::string WrapString(const char* str, const int maxLineLength = 150, const bool onlyBreakOnSpaces = true)
+{
+	std::stringstream ss;
+	int charsSinceLastNewline = 0;
+	for (const char* p = str; *p != '\0'; p++)
+	{
+		if (*p == '\n')
+		{
+			ss << '\n';
+			charsSinceLastNewline = 0;
+			continue;
+		}
+
+		if (charsSinceLastNewline >= maxLineLength)
+		{
+			if (!onlyBreakOnSpaces || *p == ' ')
+			{
+				ss << '\n';
+				charsSinceLastNewline = 0;
+
+				if (* p == ' ')
+				{
+					// If we just broke on a space, skip it.
+					p++;
+					if (*p == '\0')
+						break;
+				}
+			}
+		}
+
+		ss << *p;
+		charsSinceLastNewline++;
+	}
+	return ss.str();
+}
+
 // This function will return the SDL window for the current application, if it exists.
 // We define this in a separate CPP file, as otherwise we would have a circular dependency.
 SDL_Window* GetAppWindow();
@@ -98,6 +134,7 @@ AssertState ReportAssertion(AssertionData* data, const char* message = "Assertio
 	std::string formattedMessage = fmt::vformat(message, fmt::make_format_args(std::forward<Args>(args)...));
 	std::string fullMessage      = fmt::format("Assertion failed: \"{}\" in {} at {}:{}\n\n{}\n", data->Condition,
 	                                      data->Function, data->Filename, data->LineNumber, formattedMessage);
+	fullMessage = WrapString(fullMessage.c_str());
 
 	// Easy part first: print the message to the console. We don't use the macro, as we want to ensure the logger is non-null.
 	if (g_VulcanalLogger)

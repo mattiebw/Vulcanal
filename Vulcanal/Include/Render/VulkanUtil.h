@@ -17,6 +17,38 @@
 VkImageSubresourceRange ImageSubresourceRange(VkImageAspectFlags flags);
 void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout);
 
+inline const char* VulkanSeverityToString(VkDebugUtilsMessageSeverityFlagBitsEXT severity)
+{
+	switch (severity)
+	{
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+		return "Verbose";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+		return "Info";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+		return "Warning";
+	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+		return "Error";
+	default:
+		return "Unknown";
+	}
+}
+
+inline const char* VulkanMessageTypeToString(VkDebugUtilsMessageTypeFlagsEXT type)
+{
+	switch (type)
+	{
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
+		return "General";
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
+		return "Validation";
+	case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
+		return "Performance";
+	default:
+		return "Unknown";
+	}
+}
+
 inline VkCommandPoolCreateInfo CreateCommandPoolCreateInfo(u32 queueFamilyIndex, VkCommandPoolCreateFlags flags = 0)
 {
 	VkCommandPoolCreateInfo info = {};
@@ -68,7 +100,7 @@ inline VkCommandBufferBeginInfo CreateCommandBufferBeginInfo(VkCommandBufferUsag
 
 inline VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkPipelineStageFlags2 stageMask, VkSemaphore semaphore)
 {
-	VkSemaphoreSubmitInfo submitInfo{};
+	VkSemaphoreSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;
 	submitInfo.semaphore = semaphore;
@@ -81,7 +113,7 @@ inline VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkPipelineStageFlags2 sta
 
 inline VkCommandBufferSubmitInfo CreateCommandBufferSubmitInfo(VkCommandBuffer commandBuffer)
 {
-	VkCommandBufferSubmitInfo info{};
+	VkCommandBufferSubmitInfo info = {};
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
 	info.pNext = nullptr;
 	info.commandBuffer = commandBuffer;
