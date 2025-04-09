@@ -2,10 +2,12 @@
 #include "Render/Renderer.h"
 
 #include "Core/Application.h"
+#include "Render/Pipelines.h"
 
 #include <SDL3/SDL_vulkan.h>
-
-#include "Render/Pipelines.h"
+#include <imgui.h>
+#include <backends/imgui_impl_sdl3.h>
+#include <backends/imgui_impl_vulkan.h>
 
 Renderer::Renderer()
 	: m_Window(nullptr), m_Instance(nullptr), m_DebugMessenger(nullptr), m_GPU(nullptr), m_Device(nullptr),
@@ -55,6 +57,9 @@ bool Renderer::Init(RendererSpecification spec)
 		return false;
 	if (!InitPipelines())
 		return false;
+	
+	if (!InitImGUI())
+		return false;
 
 	return true;
 }
@@ -103,9 +108,16 @@ void Renderer::Render()
 	// Do the actual blit.
 	BlitImageToImage(commandBuffer, m_DrawImage.Image, m_SwapchainImages[swapchainImageIndex], m_DrawExtent, m_SwapchainExtent);
 
+#ifndef VULC_NO_IMGUI
+	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	DrawImGUI(commandBuffer, m_SwapchainImageViews[swapchainImageIndex]);
+	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+#else
 	// Transition our swapchain image to the required format for presenting.
 	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+#endif
 	
 	// End our command buffer.
 	VK_CHECK(vkEndCommandBuffer(commandBuffer));
@@ -138,16 +150,45 @@ void Renderer::Render()
 	m_FrameIndex++;
 }
 
-void Renderer::ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function)
+void Renderer::ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const
 {
-	
+	VK_CHECK(vkResetFences(m_Device, 1, &m_ImmediateFence));
+	VK_CHECK(vkResetCommandBuffer(m_ImmediateCommandBuffer, 0));
+
+	VkCommandBufferBeginInfo beginInfo = CreateCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	VK_CHECK(vkBeginCommandBuffer(m_ImmediateCommandBuffer, &beginInfo));
+
+	function(m_ImmediateCommandBuffer);
+
+	VK_CHECK(vkEndCommandBuffer(m_ImmediateCommandBuffer));
+
+	VkCommandBufferSubmitInfo submitInfo = CreateCommandBufferSubmitInfo(m_ImmediateCommandBuffer);
+	VkSubmitInfo2 submit = CreateSubmitInfo(&submitInfo, nullptr, nullptr);
+
+	VK_CHECK(vkQueueSubmit2(m_GraphicsQueue, 1, &submit, m_ImmediateFence));
+	VK_CHECK(vkWaitForFences(m_Device, 1, &m_ImmediateFence, true, 9999999999));
 }
 
 void Renderer::Shutdown()
 {
 	if (m_Device)
 		vkDeviceWaitIdle(m_Device);
+	else
+		return; // If we have no device, we really shouldn't be here!
 
+	// Shutdown ImGUI
+	if (m_ImGUIInitialised)
+	{
+		ImGui_ImplVulkan_Shutdown();
+		m_ImGUIInitialised = false;
+	}
+	
+	if (m_ImGUIDescriptorPool)
+	{
+		vkDestroyDescriptorPool(m_Device, m_ImGUIDescriptorPool, nullptr);
+		m_ImGUIDescriptorPool = nullptr;
+	}
+	
 	// Destroy our immediate command pool and fence.
 	if (m_ImmediateCommandPool)
 	{
@@ -155,8 +196,12 @@ void Renderer::Shutdown()
 		m_ImmediateCommandPool = nullptr;
 		m_ImmediateCommandBuffer = nullptr;
 	}
+	
 	if (m_ImmediateFence)
+	{
 		vkDestroyFence(m_Device, m_ImmediateFence, nullptr);
+		m_ImmediateFence = nullptr;
+	}
 	
 	for (s32 i = 0; i < FramesInFlight; i++)
 		ShutdownFrameData(m_Frames[i]);
@@ -435,6 +480,51 @@ bool Renderer::InitPipelines()
 	return true;
 }
 
+bool Renderer::InitImGUI()
+{
+	VkDescriptorPoolSize pool_sizes[] = { { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 } };
+
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 1000;
+	pool_info.poolSizeCount = static_cast<u32>(std::size(pool_sizes));
+	pool_info.pPoolSizes = pool_sizes;
+
+	VK_CHECK(vkCreateDescriptorPool(m_Device, &pool_info, nullptr, &m_ImGUIDescriptorPool));
+
+	ImGui_ImplVulkan_InitInfo vulkanInitInfo = {};
+	vulkanInitInfo.Instance = m_Instance;
+	vulkanInitInfo.PhysicalDevice = m_GPU;
+	vulkanInitInfo.Device = m_Device;
+	vulkanInitInfo.Queue = m_GraphicsQueue;
+	vulkanInitInfo.DescriptorPool = m_ImGUIDescriptorPool;
+	vulkanInitInfo.MinImageCount = 3;
+	vulkanInitInfo.ImageCount = 3;
+	vulkanInitInfo.UseDynamicRendering = true;
+	vulkanInitInfo.PipelineRenderingCreateInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+	vulkanInitInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+	vulkanInitInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &m_SwapchainImageFormat;
+	vulkanInitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+	VULC_CHECK(ImGui_ImplVulkan_Init(&vulkanInitInfo), "Failed to init imgui vulkan backend");
+	VULC_CHECK(ImGui_ImplVulkan_CreateFontsTexture(), "Failed to init imgui fonts texture");
+
+	m_ImGUIInitialised = true;
+	
+	return true;
+}
+
 void Renderer::Clear(VkCommandBuffer cmd) const
 {
 	// // Let's get our clear colour.
@@ -449,6 +539,19 @@ void Renderer::Clear(VkCommandBuffer cmd) const
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_GradientPipeline);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_GradientPipelineLayout, 0, 1, &m_DescriptorSet, 0, nullptr);
 	vkCmdDispatch(cmd, std::ceil(m_DrawExtent.width / 16), std::ceil(m_DrawExtent.height / 16), 1);
+}
+
+void Renderer::DrawImGUI(VkCommandBuffer cmd, VkImageView targetImage)
+{
+	VkRenderingAttachmentInfo colorAttachment = CreateRenderingColorAttachmentInfo(targetImage, nullptr,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	VkRenderingInfo renderInfo = CreateRenderingInfo(m_SwapchainExtent, &colorAttachment, nullptr);
+
+	vkCmdBeginRendering(cmd, &renderInfo);
+
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+
+	vkCmdEndRendering(cmd);
 }
 
 void Renderer::PrintDeviceInfo()

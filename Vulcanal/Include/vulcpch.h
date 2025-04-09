@@ -3,8 +3,6 @@
 #define SPDLOG_EOL ""
 #define FMT_UNICODE 0
 
-#define VULC_NO_IMGUI // temporarily disable ImGui, while we get the Vulkan renderer working
-
 // Utility functions and types
 #include <iostream>
 #include <memory>

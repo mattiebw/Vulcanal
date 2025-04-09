@@ -39,7 +39,7 @@ public:
 
 	bool Init(RendererSpecification spec);
 	void Render();
-	void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
+	void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 	void Shutdown();
 
 protected:
@@ -54,6 +54,7 @@ protected:
 	bool InitImGUI();
 
 	void Clear(VkCommandBuffer cmd) const;
+	void DrawImGUI(VkCommandBuffer cmd, VkImageView targetImage);
 
 	void PrintDeviceInfo();
 
@@ -99,6 +100,10 @@ protected:
 	VkDescriptorSetLayout m_DrawImageDescriptorLayout;
 	VkPipeline m_GradientPipeline;
 	VkPipelineLayout m_GradientPipelineLayout;
+
+	// ImGUI
+	bool m_ImGUIInitialised = false;
+	VkDescriptorPool m_ImGUIDescriptorPool;
 
 	// Immediate submission structures
 	VkFence m_ImmediateFence;

@@ -18,6 +18,7 @@ public:
 	void Run();
 	void Shutdown();
 
+	bool OnSDLEvent(const SDL_Event& e);
 	bool OnWindowClosed();
 
 	void Close();
@@ -34,7 +35,7 @@ public:
 
 protected:
 	bool InitSDL() const;
-	bool InitImGUI();
+	bool InitImGUI() const;
 
 	ApplicationSpecification m_Specification;
 	Window                   m_Window;

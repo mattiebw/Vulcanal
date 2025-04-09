@@ -55,6 +55,7 @@ public:
 	CascadingMulticastDelegate<false, const SDL_MouseButtonEvent&> OnMouseButtonEvent;
 	CascadingMulticastDelegate<false, const SDL_MouseMotionEvent&> OnMouseMotionEvent;
 	CascadingMulticastDelegate<false, const SDL_MouseWheelEvent&>  OnMouseWheelEvent;
+	CascadingMulticastDelegate<false, const SDL_Event&>		       OnSDLEvent;
 
 protected:
 	WindowSpecification m_Specification;

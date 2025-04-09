@@ -42,6 +42,8 @@ bool Application::Initialise()
 	// Bindings to window events.
 	m_Window.OnWindowClose.BindMethod(this, &Application::OnWindowClosed);
 
+	m_Window.OnSDLEvent.BindMethod(this, &Application::OnSDLEvent);
+
 	m_Window.OnKeyboardEvent.BindLambda([this](const SDL_KeyboardEvent& event)
 	{
 		Input::ProcessKeyboardInputEvent(event);
@@ -60,15 +62,15 @@ bool Application::Initialise()
 		return false;
 	});
 
-	if (!m_Renderer.Init({.EnableValidationLayers = true, .App = this}))
-	{
-		// The renderer will do its own error logging.
-		return false;
-	}
-
 	if (!InitImGUI())
 	{
 		VULC_ERROR("Failed to initialise ImGUI");
+		return false;
+	}
+
+	if (!m_Renderer.Init({.EnableValidationLayers = true, .App = this}))
+	{
+		// The renderer will do its own error logging.
 		return false;
 	}
 
@@ -94,6 +96,13 @@ void Application::Run()
 		if (Input::IsKeyDownThisFrame(Scancode::Escape))
 			Close();
 
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplSDL3_NewFrame();
+		ImGui::NewFrame();
+		ImGui::ShowDemoWindow();
+		// Debug stuff goes here.
+		ImGui::Render();
+		
 		m_Renderer.Render();
 	}
 }
@@ -102,12 +111,30 @@ void Application::Shutdown()
 {
 	VULC_INFO("Shutting down application: {}", m_Specification.Name);
 
+	m_Renderer.Shutdown();
+	
+	if (ImGui::GetCurrentContext())
+	{
+		// The renderer shuts down the Vulkan backend.
+		ImGui_ImplSDL3_Shutdown();
+		ImGui::DestroyContext();
+	}
+	
 	Input::Shutdown();
 
 	if (m_Window.IsValid())
 		m_Window.Destroy();
 
 	s_Instance = nullptr;
+}
+
+bool Application::OnSDLEvent(const SDL_Event& e)
+{
+#ifndef VULC_NO_IMGUI
+	ImGui_ImplSDL3_ProcessEvent(&e);
+#endif
+	
+	return false;
 }
 
 bool Application::OnWindowClosed()
@@ -145,7 +172,10 @@ bool Application::InitSDL() const
 	return true;
 }
 
-bool Application::InitImGUI()
+bool Application::InitImGUI() const
 {
+	ImGui::CreateContext();
+	VULC_CHECK(ImGui_ImplSDL3_InitForVulkan(m_Window.GetSDLWindow()), "Failed to init imgui SDL3 backend for Vulkan");
+
 	return true;
 }

@@ -183,3 +183,33 @@ inline VkImageViewCreateInfo CreateImageViewCreateInfo(VkFormat format, VkImage 
 	
 	return info;
 }
+
+inline VkRenderingAttachmentInfo CreateRenderingColorAttachmentInfo(VkImageView imageView, const VkClearValue* clear, VkImageLayout layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+{
+	VkRenderingAttachmentInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+	info.pNext = nullptr;
+	info.imageView = imageView;
+	info.imageLayout = layout;
+	info.loadOp = clear ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
+	info.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	if (clear)
+		info.clearValue = *clear;
+	
+	return info;
+}
+
+inline VkRenderingInfo CreateRenderingInfo(VkExtent2D extent, VkRenderingAttachmentInfo* colorAttachment, VkRenderingAttachmentInfo* depthAttachment)
+{
+	VkRenderingInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+	info.pNext = nullptr;
+	info.renderArea = VkRect2D { VkOffset2D { 0, 0 }, extent };
+	info.layerCount = 1;
+	info.colorAttachmentCount = 1;
+	info.pColorAttachments = colorAttachment;
+	info.pDepthAttachment = depthAttachment;
+	info.pStencilAttachment = nullptr;
+	
+	return info;
+}

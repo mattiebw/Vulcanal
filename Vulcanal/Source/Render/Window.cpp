@@ -41,6 +41,8 @@ void Window::PollEvents()
 
 	while (SDL_PollEvent(&windowEvent))
 	{
+		OnSDLEvent.Execute(windowEvent);
+		
 		switch (windowEvent.type)
 		{
 		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
