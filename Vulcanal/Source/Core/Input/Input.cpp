@@ -22,17 +22,17 @@ void Input::Shutdown()
 	// Nothing to do here for now, but if we add static delegates or something, we might need to clean up.
 }
 
-void Input::ProcessKeyboardInputEvent(const SDL_KeyboardEvent &event)
+void Input::ProcessKeyboardInputEvent(const SDL_KeyboardEvent& event)
 {
 	s_Keys[event.scancode] = event.down;
 }
 
-void Input::ProcessMouseInputEvent(const SDL_MouseButtonEvent &event)
+void Input::ProcessMouseInputEvent(const SDL_MouseButtonEvent& event)
 {
 	s_MouseButtons[event.button] = event.down;
 }
 
-void Input::ProcessMouseMotionEvent(const SDL_MouseMotionEvent &event)
+void Input::ProcessMouseMotionEvent(const SDL_MouseMotionEvent& event)
 {
 	s_MousePosition = {event.x, event.y};
 	s_MouseDelta    = {event.xrel, event.yrel};

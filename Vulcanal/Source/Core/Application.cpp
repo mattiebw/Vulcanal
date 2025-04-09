@@ -16,7 +16,7 @@ Application* Application::s_Instance = nullptr;
 
 Application::Application(ApplicationSpecification spec)
 	: m_Specification(std::move(spec)),
-	  m_Window(Window({.Title = m_Specification.Name, .Size = {1280, 720}, .Fullscreen = false, .Resizable = true }))
+	  m_Window(Window({.Title = m_Specification.Name, .Size = {1280, 720}, .Fullscreen = false, .Resizable = true}))
 {
 	VULC_ASSERT(!m_Specification.Name.empty(), "Application name cannot be empty");
 	VULC_ASSERT(m_Specification.Version.Packed() > 0, "Application version must be greater than 0");
@@ -87,12 +87,14 @@ void Application::Run()
 		m_Window.PollEvents();
 
 		static s32 theInteger = 5;
-		VULC_CHECK(!Input::IsKeyDownThisFrame(Scancode::R), "DON'T PRESS R!! Static number: {}, window size: {}, window title: {}", theInteger, m_Window.GetSize(), m_Window.GetTitle());
+		VULC_CHECK(!Input::IsKeyDownThisFrame(Scancode::R),
+		           "DON'T PRESS R!! Static number: {}, window size: {}, window title: {}", theInteger,
+		           m_Window.GetSize(), m_Window.GetTitle());
 		VULC_CHECK(!Input::IsKeyDownThisFrame(Scancode::B));
 
 		if (Input::IsKeyDownThisFrame(Scancode::A))
 			PrintAssertionReport();
-		
+
 		if (Input::IsKeyDownThisFrame(Scancode::Escape))
 			Close();
 
@@ -100,9 +102,9 @@ void Application::Run()
 		ImGui_ImplSDL3_NewFrame();
 		ImGui::NewFrame();
 		ImGui::ShowDemoWindow();
-		// Debug stuff goes here.
+		// ImGUI drawing goes here.
 		ImGui::Render();
-		
+
 		m_Renderer.Render();
 	}
 }
@@ -112,14 +114,14 @@ void Application::Shutdown()
 	VULC_INFO("Shutting down application: {}", m_Specification.Name);
 
 	m_Renderer.Shutdown();
-	
+
 	if (ImGui::GetCurrentContext())
 	{
 		// The renderer shuts down the Vulkan backend.
 		ImGui_ImplSDL3_Shutdown();
 		ImGui::DestroyContext();
 	}
-	
+
 	Input::Shutdown();
 
 	if (m_Window.IsValid())
@@ -133,7 +135,7 @@ bool Application::OnSDLEvent(const SDL_Event& e)
 #ifndef VULC_NO_IMGUI
 	ImGui_ImplSDL3_ProcessEvent(&e);
 #endif
-	
+
 	return false;
 }
 
@@ -147,7 +149,7 @@ void Application::Close()
 {
 	if (!m_Running)
 		return;
-	
+
 	if (!OnApplicationCloseRequested.Execute())
 		return;
 

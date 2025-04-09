@@ -14,12 +14,12 @@ struct RendererSpecification
 
 struct FrameData
 {
-	VkCommandPool CommandPool = nullptr;
+	VkCommandPool   CommandPool       = nullptr;
 	VkCommandBuffer MainCommandBuffer = nullptr;
 
 	VkSemaphore SwapchainSemaphore = nullptr;
-	VkSemaphore RenderSemaphore = nullptr;
-	VkFence RenderFence = nullptr;
+	VkSemaphore RenderSemaphore    = nullptr;
+	VkFence     RenderFence        = nullptr;
 
 	DeletionQueue FrameDeletionQueue;
 };
@@ -76,7 +76,7 @@ protected:
 	                              void*                                       pUserData);
 
 	DeletionQueue m_DeletionQueue;
-	
+
 	// Core vulkan objects
 	Window*                  m_Window;
 	vkb::Instance            m_VKBInstance;
@@ -95,28 +95,28 @@ protected:
 	std::vector<VkImageView> m_SwapchainImageViews;
 
 	// Descriptors and pipelines
-	DescriptorAllocator m_DescriptorAllocator;
-	VkDescriptorSet m_DescriptorSet;
+	DescriptorAllocator   m_DescriptorAllocator;
+	VkDescriptorSet       m_DescriptorSet;
 	VkDescriptorSetLayout m_DrawImageDescriptorLayout;
-	VkPipeline m_GradientPipeline;
-	VkPipelineLayout m_GradientPipelineLayout;
+	VkPipeline            m_GradientPipeline;
+	VkPipelineLayout      m_GradientPipelineLayout;
 
 	// ImGUI
-	bool m_ImGUIInitialised = false;
+	bool             m_ImGUIInitialised = false;
 	VkDescriptorPool m_ImGUIDescriptorPool;
 
 	// Immediate submission structures
-	VkFence m_ImmediateFence;
+	VkFence         m_ImmediateFence;
 	VkCommandBuffer m_ImmediateCommandBuffer;
-	VkCommandPool m_ImmediateCommandPool;
+	VkCommandPool   m_ImmediateCommandPool;
 
 	// Frame state data
-	u64 m_FrameIndex = 0;
+	u64                                   m_FrameIndex = 0;
 	std::array<FrameData, FramesInFlight> m_Frames;
-	VkQueue m_GraphicsQueue;
-	u32 m_GraphicsQueueFamily;
-	AllocatedImage m_DrawImage;
-	VkExtent2D m_DrawExtent;
+	VkQueue                               m_GraphicsQueue;
+	u32                                   m_GraphicsQueueFamily;
+	AllocatedImage                        m_DrawImage;
+	VkExtent2D                            m_DrawExtent;
 
 	RendererSpecification m_Spec;
 };

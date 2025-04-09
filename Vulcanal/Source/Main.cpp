@@ -10,7 +10,7 @@ namespace
 	bool g_ShouldRestart = false;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	InitLog(SDL_GetPrefPath("Mattie", "Vulcanal"));
 

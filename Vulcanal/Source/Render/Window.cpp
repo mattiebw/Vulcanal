@@ -42,7 +42,7 @@ void Window::PollEvents()
 	while (SDL_PollEvent(&windowEvent))
 	{
 		OnSDLEvent.Execute(windowEvent);
-		
+
 		switch (windowEvent.type)
 		{
 		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -52,14 +52,14 @@ void Window::PollEvents()
 			}
 		case SDL_EVENT_WINDOW_RESIZED:
 			{
-				glm::ivec2 newSize = {windowEvent.window.data1, windowEvent.window.data2};
+				glm::ivec2 newSize   = {windowEvent.window.data1, windowEvent.window.data2};
 				m_Specification.Size = newSize;
 				OnWindowResize.Execute(newSize);
 				break;
 			}
 		case SDL_EVENT_WINDOW_MOVED:
 			{
-				glm::ivec2 newPos = {windowEvent.window.data1, windowEvent.window.data2};
+				glm::ivec2 newPos        = {windowEvent.window.data1, windowEvent.window.data2};
 				m_Specification.Position = newPos;
 				OnWindowMove.Execute(newPos);
 				break;

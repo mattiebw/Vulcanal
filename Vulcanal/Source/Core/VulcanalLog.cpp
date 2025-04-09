@@ -40,6 +40,6 @@ void AddSinkToLog(const spdlog::sink_ptr& sink)
 {
 	// Don't worry - the assertion macro will check if the logger is null.
 	VULC_ASSERT(g_VulcanalLogger, "Must initialise the logger before adding sinks to it");
-	
+
 	g_VulcanalLogger->sinks().push_back(sink);
 }
