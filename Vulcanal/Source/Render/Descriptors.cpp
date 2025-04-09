@@ -49,7 +49,7 @@ void DescriptorAllocator::InitPool(VkDevice device, u32 maxSets, std::span<PoolS
     poolInfo.poolSizeCount = static_cast<u32>(poolRatios.size());
     poolInfo.pPoolSizes = poolSizes.data();
 
-    do { VkResult err = vkCreateDescriptorPool(device, &poolInfo, nullptr, &Pool); if (err != VK_SUCCESS) { auto errString = string_VkResult(err); do { static AssertionData data = { false, false, 0, 19, "err == VK_SUCCESS", FullPathToFileName("Descriptors.cpp"), __FUNCTION__, nullptr }; while (!data.AlwaysIgnored && !(err == VK_SUCCESS)) { const AssertState state = ReportAssertion(&data ,"Vulkan error: {}", errString); if (state == AssertState::Retry) { continue; } else if (state == AssertState::Break) { __debugbreak(); } break; } } while ((0,0)); } } while (0);
+    VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &Pool));
 }
 
 void DescriptorAllocator::ClearDescriptors(VkDevice device) const
