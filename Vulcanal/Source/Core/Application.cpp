@@ -16,7 +16,7 @@ Application* Application::s_Instance = nullptr;
 
 Application::Application(ApplicationSpecification spec)
 	: m_Specification(std::move(spec)),
-	  m_Window(Window({.Title = m_Specification.Name, .Size = {1280, 720}, .Fullscreen = false, .Resizable = true}))
+	  m_Window(Window({.Title = m_Specification.Name, .Size = {1280, 720}, .Fullscreen = false, .Resizable = false })) // MW @hack: Resizeable off for now, cause it crashes the entire GPU!
 {
 	VULC_ASSERT(!m_Specification.Name.empty(), "Application name cannot be empty");
 	VULC_ASSERT(m_Specification.Version.Packed() > 0, "Application version must be greater than 0");
@@ -28,6 +28,8 @@ bool Application::Initialise()
 	s_Instance = this;
 
 	VULC_INFO("Initialising application: {}", m_Specification.Name);
+	auto workingDir = std::filesystem::current_path().string();
+	VULC_INFO("Working directory: {}", workingDir);
 
 	if (!InitSDL())
 		return false;

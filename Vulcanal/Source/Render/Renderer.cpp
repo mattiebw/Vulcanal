@@ -5,6 +5,8 @@
 
 #include <SDL3/SDL_vulkan.h>
 
+#include "Render/Pipelines.h"
+
 Renderer::Renderer()
 	: m_Window(nullptr), m_Instance(nullptr), m_DebugMessenger(nullptr), m_GPU(nullptr), m_Device(nullptr),
 	  m_Surface(nullptr)
@@ -48,6 +50,10 @@ bool Renderer::Init(RendererSpecification spec)
 	if (!InitCommands())
 		return false;
 	if (!InitSyncStructures())
+		return false;
+	if (!InitDescriptors())
+		return false;
+	if (!InitPipelines())
 		return false;
 
 	return true;
@@ -325,16 +331,101 @@ bool Renderer::InitAllocator()
 	return true;
 }
 
+bool Renderer::InitDescriptors()
+{
+	std::vector<PoolSizeRatio> sizes =
+	{
+		{ .Type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, .Ratio = 1 }
+	};
+
+	m_DescriptorAllocator.InitPool(m_Device, 10, sizes);
+
+	DescriptorLayoutBuilder builder;
+	builder.AddBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	m_DrawImageDescriptorLayout = builder.Build(m_Device, VK_SHADER_STAGE_COMPUTE_BIT);
+
+	m_DescriptorSet = m_DescriptorAllocator.Allocate(m_Device, m_DrawImageDescriptorLayout);
+	VkDescriptorImageInfo imageInfo = {};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageInfo.imageView = m_DrawImage.ImageView;
+
+	VkWriteDescriptorSet drawImageWrite = {};
+	drawImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	drawImageWrite.pNext = nullptr;
+	drawImageWrite.dstBinding = 0;
+	drawImageWrite.dstSet = m_DescriptorSet;
+	drawImageWrite.descriptorCount = 1;
+	drawImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	drawImageWrite.pImageInfo = &imageInfo;
+
+	vkUpdateDescriptorSets(m_Device, 1, &drawImageWrite, 0, nullptr);
+
+	m_DeletionQueue.Defer([this]()
+	{
+		m_DescriptorAllocator.DestroyPool(m_Device);
+		vkDestroyDescriptorSetLayout(m_Device, m_DrawImageDescriptorLayout, nullptr);
+	});
+
+	return true;
+}
+
+bool Renderer::InitPipelines()
+{
+	VkPipelineLayoutCreateInfo computeLayout = {};
+	computeLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	computeLayout.pNext = nullptr;
+	computeLayout.pSetLayouts = &m_DrawImageDescriptorLayout;
+	computeLayout.setLayoutCount = 1;
+
+	VK_CHECK(vkCreatePipelineLayout(m_Device, &computeLayout, nullptr, &m_GradientPipelineLayout));
+
+	VkShaderModule shader;
+	if (!LoadShaderModule("Content/Shaders/GradientTest.spv", m_Device, &shader))
+	{
+		VULC_ERROR("Failed to load Gradient Shader");
+		return false;
+	}
+
+	VkPipelineShaderStageCreateInfo stageInfo = {};
+	stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	stageInfo.pNext = nullptr;
+	stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	stageInfo.module = shader;
+	stageInfo.pName = "main"; // Entry point.
+
+	VkComputePipelineCreateInfo computePipelineInfo = {};
+	computePipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	computePipelineInfo.pNext = nullptr;
+	computePipelineInfo.layout = m_GradientPipelineLayout;
+	computePipelineInfo.stage = stageInfo;
+
+	VK_CHECK(vkCreateComputePipelines(m_Device, VK_NULL_HANDLE, 1, &computePipelineInfo, nullptr, &m_GradientPipeline));
+
+	vkDestroyShaderModule(m_Device, shader, nullptr);
+
+	m_DeletionQueue.Defer([this]()
+	{
+		vkDestroyPipelineLayout(m_Device, m_GradientPipelineLayout, nullptr);
+		vkDestroyPipeline(m_Device, m_GradientPipeline, nullptr);
+	});
+
+	return true;
+}
+
 void Renderer::Clear(VkCommandBuffer cmd) const
 {
-	// Let's get our clear colour.
-	VkClearColorValue clearValue;
-	glm::vec3         color = MathUtil::HSVToRGB(glm::vec3(static_cast<float>(m_FrameIndex % 360) / 360, 1.f, 1.f));
-	clearValue              = {{color.x, color.y, color.z, 1.0f}};
+	// // Let's get our clear colour.
+	// VkClearColorValue clearValue;
+	// glm::vec3         color = MathUtil::HSVToRGB(glm::vec3(static_cast<float>(m_FrameIndex % 360) / 360, 1.f, 1.f));
+	// clearValue              = {{color.x, color.y, color.z, 1.0f}};
+	//
+	// VkImageSubresourceRange clearRange = ImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+	//
+	// vkCmdClearColorImage(cmd, m_DrawImage.Image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
 
-	VkImageSubresourceRange clearRange = ImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
-
-	vkCmdClearColorImage(cmd, m_DrawImage.Image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
+	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_GradientPipeline);
+	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_GradientPipelineLayout, 0, 1, &m_DescriptorSet, 0, nullptr);
+	vkCmdDispatch(cmd, std::ceil(m_DrawExtent.width / 16), std::ceil(m_DrawExtent.height / 16), 1);
 }
 
 void Renderer::PrintDeviceInfo()

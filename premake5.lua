@@ -31,6 +31,7 @@ project "Vulcanal"
 	location "Vulcanal"
 	targetdir ("Build/%{prj.name}/" .. outputdir)
 	objdir ("Build/%{prj.name}/Intermediates/" .. outputdir)
+	debugdir ("Build/%{prj.name}/" .. outputdir)
 
 	usestandardpreprocessor 'On'
 	pchheader("vulcpch.h")

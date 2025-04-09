@@ -12,6 +12,7 @@ public class VulkanShaderProcessor : IProcessor
         if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             filename = "glslangValidator.exe";
 
+        // MW @todo: Reverse the order here - we're more likely to have VULKAN_SDK set and find it there than for it to be in the path.
         _glslValidatorPath = Utility.TryGetExecutablePath(filename);
         if (string.IsNullOrEmpty(_glslValidatorPath))
         {
@@ -22,7 +23,7 @@ public class VulkanShaderProcessor : IProcessor
                 return;
             }
             
-            _glslValidatorPath = Path.Combine(vulkanSdk!, "/Bin/", filename);
+            _glslValidatorPath = Path.Combine(vulkanSdk!, "/bin/", filename);
             if (!File.Exists(_glslValidatorPath))
             {
                 Log.Error($"Failed to find glslangValidator.");

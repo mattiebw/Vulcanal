@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Descriptors.h"
 #include "Image.h"
 
 class Application;
@@ -47,6 +48,8 @@ protected:
 	bool InitCommands();
 	bool InitSyncStructures();
 	bool InitAllocator();
+	bool InitDescriptors();
+	bool InitPipelines();
 
 	void Clear(VkCommandBuffer cmd) const;
 
@@ -87,6 +90,13 @@ protected:
 	VkExtent2D               m_SwapchainExtent;
 	std::vector<VkImage>     m_SwapchainImages;
 	std::vector<VkImageView> m_SwapchainImageViews;
+
+	// Descriptors and pipelines
+	DescriptorAllocator m_DescriptorAllocator;
+	VkDescriptorSet m_DescriptorSet;
+	VkDescriptorSetLayout m_DrawImageDescriptorLayout;
+	VkPipeline m_GradientPipeline;
+	VkPipelineLayout m_GradientPipelineLayout;
 
 	// Frame state data
 	u64 m_FrameIndex = 0;
