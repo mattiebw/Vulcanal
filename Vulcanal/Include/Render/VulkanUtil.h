@@ -61,13 +61,13 @@ inline VkCommandPoolCreateInfo CreateCommandPoolCreateInfo(u32 queueFamilyIndex,
 	return info;
 }
 
-inline VkCommandBufferAllocateInfo CreateCommandBufferAllocateInfo(VkCommandPool commandPool, bool primary = true)
+inline VkCommandBufferAllocateInfo CreateCommandBufferAllocateInfo(VkCommandPool commandPool, u32 count = 1, bool primary = true)
 {
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo;
 	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	commandBufferAllocateInfo.pNext = nullptr;
 	commandBufferAllocateInfo.commandPool = commandPool;
-	commandBufferAllocateInfo.commandBufferCount = 1;
+	commandBufferAllocateInfo.commandBufferCount = count;
 	commandBufferAllocateInfo.level = primary ? VK_COMMAND_BUFFER_LEVEL_PRIMARY : VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 	return commandBufferAllocateInfo;
 }

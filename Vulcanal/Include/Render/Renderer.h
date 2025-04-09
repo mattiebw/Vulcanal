@@ -39,6 +39,7 @@ public:
 
 	bool Init(RendererSpecification spec);
 	void Render();
+	void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function);
 	void Shutdown();
 
 protected:
@@ -50,6 +51,7 @@ protected:
 	bool InitAllocator();
 	bool InitDescriptors();
 	bool InitPipelines();
+	bool InitImGUI();
 
 	void Clear(VkCommandBuffer cmd) const;
 
@@ -97,6 +99,11 @@ protected:
 	VkDescriptorSetLayout m_DrawImageDescriptorLayout;
 	VkPipeline m_GradientPipeline;
 	VkPipelineLayout m_GradientPipelineLayout;
+
+	// Immediate submission structures
+	VkFence m_ImmediateFence;
+	VkCommandBuffer m_ImmediateCommandBuffer;
+	VkCommandPool m_ImmediateCommandPool;
 
 	// Frame state data
 	u64 m_FrameIndex = 0;

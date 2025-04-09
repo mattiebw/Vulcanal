@@ -138,11 +138,26 @@ void Renderer::Render()
 	m_FrameIndex++;
 }
 
+void Renderer::ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function)
+{
+	
+}
+
 void Renderer::Shutdown()
 {
 	if (m_Device)
 		vkDeviceWaitIdle(m_Device);
 
+	// Destroy our immediate command pool and fence.
+	if (m_ImmediateCommandPool)
+	{
+		vkDestroyCommandPool(m_Device, m_ImmediateCommandPool, nullptr);
+		m_ImmediateCommandPool = nullptr;
+		m_ImmediateCommandBuffer = nullptr;
+	}
+	if (m_ImmediateFence)
+		vkDestroyFence(m_Device, m_ImmediateFence, nullptr);
+	
 	for (s32 i = 0; i < FramesInFlight; i++)
 		ShutdownFrameData(m_Frames[i]);
 
@@ -290,9 +305,14 @@ bool Renderer::InitCommands()
 		VK_CHECK(vkCreateCommandPool(m_Device, &commandPoolInfo, nullptr, &m_Frames[i].CommandPool));
 
 		// Finally, create our command buffers.
-		VkCommandBufferAllocateInfo bufferInfo = CreateCommandBufferAllocateInfo(m_Frames[i].CommandPool, true);
+		VkCommandBufferAllocateInfo bufferInfo = CreateCommandBufferAllocateInfo(m_Frames[i].CommandPool, 1, true);
 		VK_CHECK(vkAllocateCommandBuffers(m_Device, &bufferInfo, &m_Frames[i].MainCommandBuffer));
 	}
+
+	// And our immediate command buffer.
+	VK_CHECK(vkCreateCommandPool(m_Device, &commandPoolInfo, nullptr, &m_ImmediateCommandPool));
+	VkCommandBufferAllocateInfo immediateCommandBufferInfo = CreateCommandBufferAllocateInfo(m_ImmediateCommandPool, 1, true);
+	VK_CHECK(vkAllocateCommandBuffers(m_Device, &immediateCommandBufferInfo, &m_ImmediateCommandBuffer));
 
 	return true;
 }
@@ -309,6 +329,9 @@ bool Renderer::InitSyncStructures()
 		VK_CHECK(vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_Frames[i].RenderSemaphore));
 		VK_CHECK(vkCreateSemaphore(m_Device, &semaphoreInfo, nullptr, &m_Frames[i].SwapchainSemaphore));
 	}
+
+	// And init our immediate fence.
+	VK_CHECK(vkCreateFence(m_Device, &fenceInfo, nullptr, &m_ImmediateFence));
 
 	return true;
 }

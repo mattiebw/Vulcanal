@@ -7,7 +7,7 @@
 
 namespace
 {
-	bool g_ShouldRestart = false;
+	bool g_ShouldRestart = true;
 }
 
 int main(int argc, char *argv[])
