@@ -20,7 +20,7 @@ struct FrameData
 	VkSemaphore RenderSemaphore = nullptr;
 	VkFence RenderFence = nullptr;
 
-	DeletionQueue DeletionQueue;
+	DeletionQueue FrameDeletionQueue;
 };
 
 constexpr u16 FramesInFlight = 2;
