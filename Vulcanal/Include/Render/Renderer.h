@@ -1,7 +1,8 @@
 ﻿#pragma once
 
-class Application;
+#include "Image.h"
 
+class Application;
 class Window;
 
 struct RendererSpecification
@@ -47,6 +48,8 @@ protected:
 	bool InitSyncStructures();
 	bool InitAllocator();
 
+	void Clear(VkCommandBuffer cmd) const;
+
 	void PrintDeviceInfo();
 
 	bool OnWindowResize(const glm::ivec2& newSize);
@@ -90,6 +93,8 @@ protected:
 	std::array<FrameData, FramesInFlight> m_Frames;
 	VkQueue m_GraphicsQueue;
 	u32 m_GraphicsQueueFamily;
+	AllocatedImage m_DrawImage;
+	VkExtent2D m_DrawExtent;
 
 	RendererSpecification m_Spec;
 };

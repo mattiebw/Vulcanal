@@ -36,6 +36,10 @@ bool Renderer::Init(RendererSpecification spec)
 	if (!InitDevice())
 		return false;
 	PrintDeviceInfo();
+
+	if (!InitAllocator())
+		return false;
+	
 	if (!InitSwapchain())
 		return false;
 
@@ -74,25 +78,33 @@ void Renderer::Render()
 	VkCommandBufferBeginInfo beginInfo = CreateCommandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	VK_CHECK(vkBeginCommandBuffer(commandBuffer, &beginInfo));
 
-	// Transition our swapchain image.
+	// Update our draw extent.
+	m_DrawExtent.width = m_DrawImage.Extent.width;
+	m_DrawExtent.height = m_DrawImage.Extent.height;
+	
+	// Transition our draw image.
+	TransitionImage(commandBuffer, m_DrawImage.Image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+	// This is where we're actually able to draw things!
+	// Clear our screen.
+	Clear(commandBuffer);
+
+	// Okay, we're done drawing - lets prepare our draw and swapchain images for the blit.
+	TransitionImage(commandBuffer, m_DrawImage.Image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED,
-	                VK_IMAGE_LAYOUT_GENERAL);
+	                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-	// Let's get our clear colour.
-	VkClearColorValue clearValue;
-	glm::vec3         color = MathUtil::HSVToRGB(glm::vec3(static_cast<float>(m_FrameIndex % 360) / 360, 1.f, 1.f));
-	clearValue              = {{color.x, color.y, color.z, 1.0f}};
+	// Do the actual blit.
+	BlitImageToImage(commandBuffer, m_DrawImage.Image, m_SwapchainImages[swapchainImageIndex], m_DrawExtent, m_SwapchainExtent);
 
-	VkImageSubresourceRange clearRange = ImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
-
-	vkCmdClearColorImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1,
-	                     &clearRange);
-
-	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_GENERAL,
-	                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-
+	// Transition our swapchain image to the required format for presenting.
+	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	
+	// End our command buffer.
 	VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
+	// Submit our command buffer.
 	VkCommandBufferSubmitInfo cmdInfo  = CreateCommandBufferSubmitInfo(commandBuffer);
 	VkSemaphoreSubmitInfo     waitInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
 	                                                           frame.SwapchainSemaphore);
@@ -101,21 +113,22 @@ void Renderer::Render()
 
 	VkSubmitInfo2 submit = CreateSubmitInfo(&cmdInfo, &waitInfo, &signalInfo);
 
+	// This is the big moment: submit our command buffer to the GPU.
 	VK_CHECK(vkQueueSubmit2(m_GraphicsQueue, 1, &submit, frame.RenderFence));
 
+	// Present our swapchain.
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType            = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.pNext            = nullptr;
 	presentInfo.pSwapchains      = &m_Swapchain;
 	presentInfo.swapchainCount   = 1;
-
 	presentInfo.pWaitSemaphores    = &frame.RenderSemaphore;
 	presentInfo.waitSemaphoreCount = 1;
-
 	presentInfo.pImageIndices = &swapchainImageIndex;
 
 	VK_CHECK(vkQueuePresentKHR(m_GraphicsQueue, &presentInfo));
 
+	// We're done with this frame. Let's iterate.
 	m_FrameIndex++;
 }
 
@@ -131,12 +144,21 @@ void Renderer::Shutdown()
 
 	DestroySwapchain();
 
+	// We should be done destroying anything we allocated with VMA by this point.
+	if (m_Allocator)
+	{
+		vmaDestroyAllocator(m_Allocator);
+		m_Allocator = nullptr;
+	}
+
+	// Then destroy the surface...
 	if (m_Surface)
 	{
 		vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
 		m_Surface = nullptr;
 	}
 
+	// And the logical device...
 	if (m_Device)
 	{
 		vkDestroyDevice(m_Device, nullptr);
@@ -144,13 +166,15 @@ void Renderer::Shutdown()
 		m_GPU    = nullptr;
 	}
 
+	// The debug messenger...
 	if (m_DebugMessenger)
 	{
 		vkb::destroy_debug_utils_messenger(m_Instance, m_DebugMessenger);
 		m_DebugMessenger = nullptr;
 	}
 
-	if (m_Instance != nullptr)
+	// And finally, the instance.
+	if (m_Instance)
 	{
 		vkDestroyInstance(m_Instance, nullptr);
 		m_Instance = nullptr;
@@ -297,13 +321,20 @@ bool Renderer::InitAllocator()
 		                      "Vulkan Error");
 		return false;
 	}
-
-	m_DeletionQueue.Defer([&]() {
-		vmaDestroyAllocator(m_Allocator);
-		m_Allocator = nullptr;
-	});
-
+	
 	return true;
+}
+
+void Renderer::Clear(VkCommandBuffer cmd) const
+{
+	// Let's get our clear colour.
+	VkClearColorValue clearValue;
+	glm::vec3         color = MathUtil::HSVToRGB(glm::vec3(static_cast<float>(m_FrameIndex % 360) / 360, 1.f, 1.f));
+	clearValue              = {{color.x, color.y, color.z, 1.0f}};
+
+	VkImageSubresourceRange clearRange = ImageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
+
+	vkCmdClearColorImage(cmd, m_DrawImage.Image, VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
 }
 
 void Renderer::PrintDeviceInfo()
@@ -333,18 +364,21 @@ bool Renderer::OnWindowResize(const glm::ivec2& newSize)
 
 bool Renderer::CreateSwapchain(u32 width, u32 height)
 {
+	// We'll use vkb to create our swapchain.
 	vkb::SwapchainBuilder swapchainBuilder(m_GPU, m_Device, m_Surface);
-	m_SwapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	m_SwapchainImageFormat = VK_FORMAT_B8G8R8A8_UNORM; // Hardcoded format for now.
 
+	// Let's build it!
 	auto swapchainResult = swapchainBuilder
 	                       .set_desired_format(VkSurfaceFormatKHR{
 		                       .format = m_SwapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
 	                       })
-	                       .set_desired_present_mode(VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+	                       .set_desired_present_mode(VK_PRESENT_MODE_FIFO_RELAXED_KHR) // Relaxed VSync for now - make this customisable.
 	                       .set_desired_extent(width, height)
 	                       .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	                       .build();
 
+	// Basic error checking.
 	if (!swapchainResult.has_value())
 	{
 		m_Spec.App->ShowError(fmt::format("Failed to create Vulkan swapchain: {}", swapchainResult.error().message()),
@@ -352,6 +386,7 @@ bool Renderer::CreateSwapchain(u32 width, u32 height)
 		return false;
 	}
 
+	// And more error checking!
 	vkb::Swapchain& swapchain = swapchainResult.value();
 	if (!swapchain.get_images().has_value())
 	{
@@ -361,17 +396,54 @@ bool Renderer::CreateSwapchain(u32 width, u32 height)
 		return false;
 	}
 
+	// We've got our swapchain - let's update our state.
 	m_Swapchain            = swapchain.swapchain;
 	m_SwapchainImageFormat = swapchain.image_format;
 	m_SwapchainExtent      = swapchain.extent;
 	m_SwapchainImages      = swapchain.get_images().value();
 	m_SwapchainImageViews  = swapchain.get_image_views().value();
 
+	// Okay, now that the swapchain itself is created, let's create the separate image we'll actually draw to.
+	VkExtent3D drawImageExtent = { width, height, 1 };
+	m_DrawImage.Extent = drawImageExtent;
+
+	// We'll hardcode the image format for now.
+	m_DrawImage.Format = VK_FORMAT_R16G16B16A16_SFLOAT;
+
+	// Our usage flags.
+	VkImageUsageFlags uses = {};
+	uses |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	uses |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	uses |= VK_IMAGE_USAGE_STORAGE_BIT;
+	uses |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+	VkImageCreateInfo imageCreateInfo = CreateImageCreateInfo(m_DrawImage.Format, uses, drawImageExtent);
+	
+	// We'll allocate it on local GPU memory.
+	VmaAllocationCreateInfo imageAllocInfo = {};
+	imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	imageAllocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	// Actually allocate the memory, using VMA.
+	vmaCreateImage(m_Allocator, &imageCreateInfo, &imageAllocInfo, &m_DrawImage.Image, &m_DrawImage.Allocation, nullptr);
+
+	// Create the image view.
+	VkImageViewCreateInfo imageViewInfo = CreateImageViewCreateInfo(m_DrawImage.Format, m_DrawImage.Image, VK_IMAGE_ASPECT_COLOR_BIT);
+	VK_CHECK(vkCreateImageView(m_Device, &imageViewInfo, nullptr, &m_DrawImage.ImageView));
+	
 	return true;
 }
 
 bool Renderer::DestroySwapchain()
 {
+	if (m_DrawImage.Image)
+	{
+		vkDestroyImageView(m_Device, m_DrawImage.ImageView, nullptr);
+		vmaDestroyImage(m_Allocator, m_DrawImage.Image, m_DrawImage.Allocation);
+
+		m_DrawImage.Reset();
+	}
+	
 	if (!m_Swapchain)
 		return true;
 

@@ -16,10 +16,12 @@
 
 VkImageSubresourceRange ImageSubresourceRange(VkImageAspectFlags flags);
 void TransitionImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout);
+void BlitImageToImage(VkCommandBuffer commandBuffer, VkImage source, VkImage destination, VkExtent2D sourceExt,
+	VkExtent2D destinationExt, VkFilter filter = VK_FILTER_LINEAR);
 
 inline const char* VulkanSeverityToString(VkDebugUtilsMessageSeverityFlagBitsEXT severity)
 {
-	switch (severity)
+	switch (severity)  // NOLINT(clang-diagnostic-switch-enum)
 	{
 	case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
 		return "Verbose";
@@ -51,7 +53,7 @@ inline const char* VulkanMessageTypeToString(VkDebugUtilsMessageTypeFlagsEXT typ
 
 inline VkCommandPoolCreateInfo CreateCommandPoolCreateInfo(u32 queueFamilyIndex, VkCommandPoolCreateFlags flags = 0)
 {
-	VkCommandPoolCreateInfo info = {};
+	VkCommandPoolCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	info.pNext = nullptr;
 	info.queueFamilyIndex = queueFamilyIndex;
@@ -72,7 +74,7 @@ inline VkCommandBufferAllocateInfo CreateCommandBufferAllocateInfo(VkCommandPool
 
 inline VkFenceCreateInfo CreateFenceCreateInfo(VkFenceCreateFlags flags = 0)
 {
-	VkFenceCreateInfo info = {};
+	VkFenceCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	info.pNext = nullptr;
 	info.flags = flags;
@@ -81,7 +83,7 @@ inline VkFenceCreateInfo CreateFenceCreateInfo(VkFenceCreateFlags flags = 0)
 
 inline VkSemaphoreCreateInfo CreateSemaphoreCreateInfo(VkSemaphoreCreateFlags flags = 0)
 {
-	VkSemaphoreCreateInfo info = {};
+	VkSemaphoreCreateInfo info;
 	info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	info.pNext = nullptr;
 	info.flags = flags;
@@ -90,7 +92,7 @@ inline VkSemaphoreCreateInfo CreateSemaphoreCreateInfo(VkSemaphoreCreateFlags fl
 
 inline VkCommandBufferBeginInfo CreateCommandBufferBeginInfo(VkCommandBufferUsageFlags flags = 0)
 {
-	VkCommandBufferBeginInfo info = {};
+	VkCommandBufferBeginInfo info;
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	info.pNext = nullptr;
 	info.pInheritanceInfo = nullptr;
@@ -100,7 +102,7 @@ inline VkCommandBufferBeginInfo CreateCommandBufferBeginInfo(VkCommandBufferUsag
 
 inline VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkPipelineStageFlags2 stageMask, VkSemaphore semaphore)
 {
-	VkSemaphoreSubmitInfo submitInfo = {};
+	VkSemaphoreSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 	submitInfo.pNext = nullptr;
 	submitInfo.semaphore = semaphore;
@@ -113,7 +115,7 @@ inline VkSemaphoreSubmitInfo CreateSemaphoreSubmitInfo(VkPipelineStageFlags2 sta
 
 inline VkCommandBufferSubmitInfo CreateCommandBufferSubmitInfo(VkCommandBuffer commandBuffer)
 {
-	VkCommandBufferSubmitInfo info = {};
+	VkCommandBufferSubmitInfo info;
 	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
 	info.pNext = nullptr;
 	info.commandBuffer = commandBuffer;
@@ -138,5 +140,46 @@ inline VkSubmitInfo2 CreateSubmitInfo(const VkCommandBufferSubmitInfo* commandBu
 	info.commandBufferInfoCount = 1;
 	info.pCommandBufferInfos = commandBuffer;
 
+	return info;
+}
+
+inline VkImageCreateInfo CreateImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags,
+	VkExtent3D extent, u32 mipLevels = 1, u32 arrayLayers = 1, VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
+	VkImageType type = VK_IMAGE_TYPE_2D, VkImageCreateFlags flags = 0)
+{
+	VkImageCreateInfo info = {};
+
+	info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	info.pNext = nullptr;
+	info.imageType = type;
+	info.format = format;
+	info.extent = extent;
+	info.mipLevels = mipLevels;
+	info.arrayLayers = arrayLayers;
+	info.samples = samples;
+	info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	info.usage = usageFlags;
+	info.flags = flags;
+	
+	return info;
+}
+
+inline VkImageViewCreateInfo CreateImageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags,
+	VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D,
+	u32 baseMip = 0, u32 levelCount = 1, u32 baseArray = 0, u32 layerCount = 1)
+{
+	VkImageViewCreateInfo info = {};
+
+	info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	info.pNext = nullptr;
+	info.viewType = viewType;
+	info.image = image;
+	info.format = format;
+	info.subresourceRange.baseMipLevel = baseMip;
+	info.subresourceRange.levelCount = levelCount;
+	info.subresourceRange.baseArrayLayer = baseArray;
+	info.subresourceRange.layerCount = layerCount;
+	info.subresourceRange.aspectMask = aspectFlags;
+	
 	return info;
 }
