@@ -20,8 +20,27 @@ internal struct LibraryToCopy
 [Serializable]
 internal struct PreprocessorSettings
 {
+    /// <summary>
+    /// If a file matches this pattern, we ignore it.
+    /// MW @todo: Implement
+    /// </summary>
     public List<string> IgnoredFilePatterns { get; set; } = [];
+    
+    /// <summary>
+    /// Paths to add to the system "PATH" variable for all spawned processes, if they exist.
+    /// Can be useful for limited systems where you can't edit the PATH for the entire system,
+    /// but you still want to add a path for the preprocessor to use.
+    /// </summary>
+    public List<string> SpeculativePathAdditions { get; set; } = [];
+    
+    /// <summary>
+    /// Library files to copy to the build directory.
+    /// </summary>
     public Dictionary<string, List<LibraryToCopy>> LibraryCopies { get; set; } = [];
+    
+    /// <summary>
+    /// Other misc settings to be set for the different processors.
+    /// </summary>
     public Dictionary<string, string> ProcessorSettings { get; set; } = [];
 
     public PreprocessorSettings()
@@ -77,6 +96,19 @@ internal static class Program
             $"Running Preprocessor, with:\n\tContent directory: {contentDir}\n\tOutput directory: {outputDir}\n\tPlatform: {args[2]}");
 
         LoadSettings(contentDir);
+        
+        // Add our speculative path additions.
+        if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+        {
+            StringBuilder newPath = new StringBuilder(Environment.GetEnvironmentVariable("PATH"));
+            foreach (string path in PreprocessorSettings.SpeculativePathAdditions)
+            {
+                if (Directory.Exists(path))
+                    newPath.Append(';').Append(path);
+            }
+            Environment.SetEnvironmentVariable("PATH", newPath.ToString(), EnvironmentVariableTarget.Process);
+        }
+        
         LoadLastProcessedTimes();
         LoadProcessors();
         DoLibCopies(contentDir, outputDir, args[2]);

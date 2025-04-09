@@ -28,5 +28,8 @@
   },
   "ProcessorSettings": {
     "MeshExtension": ".mesh"
-  }
+  },
+  "SpeculativePathAdditions": [
+    "C:/Temp/VulkanSDK/Bin"
+  ]
 }
