@@ -16,7 +16,7 @@ Application* Application::s_Instance = nullptr;
 
 Application::Application(ApplicationSpecification spec)
 	: m_Specification(std::move(spec)),
-	  m_Window(Window({.Title = m_Specification.Name, .Size = {1280, 720}, .Fullscreen = false, .Resizable = false })) // MW @hack: Resizeable off for now, cause it crashes the entire GPU!
+	  m_Window(Window({.Title = m_Specification.Name, .Size = {1280, 720}, .Fullscreen = false, .Resizable = true }))
 {
 	VULC_ASSERT(!m_Specification.Name.empty(), "Application name cannot be empty");
 	VULC_ASSERT(m_Specification.Version.Packed() > 0, "Application version must be greater than 0");

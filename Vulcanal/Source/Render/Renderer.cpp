@@ -129,7 +129,7 @@ void Renderer::Render()
 	VkSemaphoreSubmitInfo signalInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
 	                                                             frame.RenderSemaphore);
 
-	VkSubmitInfo2 submit = CreateSubmitInfo(&cmdInfo, &waitInfo, &signalInfo);
+	VkSubmitInfo2 submit = CreateSubmitInfo(&cmdInfo, &signalInfo, &waitInfo);
 
 	// This is the big moment: submit our command buffer to the GPU.
 	VK_CHECK(vkQueueSubmit2(m_GraphicsQueue, 1, &submit, frame.RenderFence));
@@ -538,7 +538,7 @@ void Renderer::Clear(VkCommandBuffer cmd) const
 
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_GradientPipeline);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_GradientPipelineLayout, 0, 1, &m_DescriptorSet, 0, nullptr);
-	vkCmdDispatch(cmd, std::ceil(m_DrawExtent.width / 16), std::ceil(m_DrawExtent.height / 16), 1);
+	vkCmdDispatch(cmd, static_cast<u32>(std::ceil(m_DrawExtent.width / 16)), static_cast<u32>(std::ceil(m_DrawExtent.height / 16)), 1);
 }
 
 void Renderer::DrawImGUI(VkCommandBuffer cmd, VkImageView targetImage)
@@ -576,6 +576,23 @@ bool Renderer::OnWindowResize(const glm::ivec2& newSize)
 	vkDeviceWaitIdle(m_Device);
 	DestroySwapchain();
 	CreateSwapchain(newSize.x, newSize.y);
+
+	// BODGE FIX FOR RESIZING
+	VkDescriptorImageInfo imageInfo = {};
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageInfo.imageView = m_DrawImage.ImageView;
+
+	VkWriteDescriptorSet drawImageWrite = {};
+	drawImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	drawImageWrite.pNext = nullptr;
+	drawImageWrite.dstBinding = 0;
+	drawImageWrite.dstSet = m_DescriptorSet;
+	drawImageWrite.descriptorCount = 1;
+	drawImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	drawImageWrite.pImageInfo = &imageInfo;
+
+	vkUpdateDescriptorSets(m_Device, 1, &drawImageWrite, 0, nullptr);
+	
 	return false;
 }
 
