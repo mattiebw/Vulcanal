@@ -6,6 +6,7 @@
 struct ApplicationSpecification
 {
 	std::string Name    = "Application";
+	std::string Author  = "Super Cool Game Corp";
 	SemVer      Version = SemVer(1, 0, 0);
 };
 
@@ -18,8 +19,9 @@ public:
 	void Run();
 	void Shutdown();
 
-	bool OnSDLEvent(const SDL_Event& e);
-	bool OnWindowClosed();
+	static void BeginImGUI();
+	static bool OnSDLEvent(const SDL_Event& e);
+	bool        OnWindowClosed();
 
 	void Close();
 	void ShowError(const std::string& message, const std::string& title = "Error") const;
@@ -28,6 +30,12 @@ public:
 	NODISCARD FORCEINLINE Window&                         GetWindow() { return m_Window; }
 	NODISCARD FORCEINLINE const Window&                   GetWindow() const { return m_Window; }
 	NODISCARD FORCEINLINE bool                            IsRunning() const { return m_Running; }
+
+	NODISCARD FORCEINLINE static bool ShouldRestart() { return s_ShouldRestart; }
+	NODISCARD FORCEINLINE static void RequestRestart(bool restart = true)
+	{
+		s_ShouldRestart = restart;
+	}
 
 	NODISCARD FORCEINLINE static Application* Get() { return s_Instance; }
 
@@ -42,5 +50,9 @@ protected:
 	Renderer                 m_Renderer;
 	bool                     m_Running = false;
 
+	// Test stuff.
+	static s32 s_SelectedGPU;
+
 	static Application* s_Instance;
+	static bool         s_ShouldRestart;
 };

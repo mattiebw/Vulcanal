@@ -5,18 +5,11 @@
 
 #include "Core/Application.h"
 
-namespace
-{
-	bool g_ShouldRestart = false;
-}
-
 int main(int argc, char* argv[])
 {
-	InitLog(SDL_GetPrefPath("Mattie", "Vulcanal"));
-
 	do
 	{
-		Application application({.Name = "Vulcanal", .Version = SemVer(1, 0, 0)});
+		Application application({.Name = "Vulcanal", .Author = "Mattie", .Version = SemVer(1, 0, 0)});
 		if (application.Initialise())
 		{
 			application.Run();
@@ -24,11 +17,11 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			g_ShouldRestart = false;
+			Application::RequestRestart(false);
 			return -1;
 		}
 	}
-	while (g_ShouldRestart);
+	while (Application::ShouldRestart());
 
 	return 0;
 }

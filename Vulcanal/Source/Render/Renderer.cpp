@@ -1,19 +1,15 @@
 ﻿#include "vulcpch.h"
 #include "Render/Renderer.h"
 
+#include <SDL3/SDL_vulkan.h>
+
+#ifndef VULC_NO_IMGUI
+#include <imgui.h>
+#include <backends/imgui_impl_vulkan.h>
+#endif
+
 #include "Core/Application.h"
 #include "Render/Pipelines.h"
-
-#include <SDL3/SDL_vulkan.h>
-#include <imgui.h>
-#include <backends/imgui_impl_sdl3.h>
-#include <backends/imgui_impl_vulkan.h>
-
-Renderer::Renderer()
-	: m_Window(nullptr), m_Instance(nullptr), m_DebugMessenger(nullptr), m_GPU(nullptr), m_Device(nullptr),
-	  m_Surface(nullptr)
-{
-}
 
 Renderer::~Renderer()
 {
@@ -132,7 +128,7 @@ void Renderer::Render()
 	// Submit our command buffer.
 	VkCommandBufferSubmitInfo cmdInfo  = CreateCommandBufferSubmitInfo(commandBuffer);
 	VkSemaphoreSubmitInfo     waitInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
-	                                                               frame.SwapchainSemaphore);
+	                                                           frame.SwapchainSemaphore);
 	VkSemaphoreSubmitInfo signalInfo = CreateSemaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
 	                                                             frame.RenderSemaphore);
 
@@ -295,20 +291,57 @@ bool Renderer::InitDevice()
 
 	vkb::PhysicalDeviceSelector deviceSelector(m_VKBInstance, m_Surface);
 
-	auto device = deviceSelector
-	              .set_minimum_version(1, 3)
-	              .set_required_features_12(deviceFeatures12)
-	              .set_required_features_13(deviceFeatures13)
-	              .select();
+	deviceSelector
+		.set_minimum_version(1, 3)
+		.set_required_features_12(deviceFeatures12)
+		.set_required_features_13(deviceFeatures13)
+		// Still selecting an integrated Radeon over a 3070 on my laptop, so we'll do some manual selection.
+		.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
 
-	if (!device.has_value())
+	auto deviceResult = deviceSelector.select_devices();
+	if (!deviceResult.has_value())
 	{
-		m_Spec.App->ShowError(fmt::format("Failed to select Vulkan device: {}", device.error().message()),
+		m_Spec.App->ShowError(fmt::format("Failed to select Vulkan device: {}", deviceResult.error().message()),
 		                      "Vulkan Error");
 		return false;
 	}
 
-	vkb::DeviceBuilder deviceBuilder(device.value());
+	// We're going to assume this won't fail if select_devices() didn't fail.
+	m_GPUNames = deviceSelector.select_device_names().value();
+
+	auto& devices = deviceResult.value();
+	VULC_ASSERT(!devices.empty(), "No devices found!"); // Don't think this can happen.
+	u32 gpuIndex = 0;
+	if (m_Spec.GPUIndexOverride >= 0 && static_cast<size_t>(m_Spec.GPUIndexOverride) < devices.size())
+		gpuIndex = m_Spec.GPUIndexOverride;
+	else if (m_Spec.GPUIndexOverride != 0)
+	{
+		// No override - let's select the GPU with the highest VRAM.
+		u64 maxMemory = 0;
+
+		// For each device...
+		for (u32 deviceIt = 0; deviceIt < devices.size(); deviceIt++)
+		{
+			// Add up the size of all the heaps that are device local - this will exclude system RAM on integrated GPUs.
+			const auto& memoryProperties = devices[deviceIt].memory_properties;
+			u64         memSum           = 0;
+			for (u32 heapIt = 0; heapIt < memoryProperties.memoryHeapCount; heapIt++)
+			{
+				if (memoryProperties.memoryHeaps[heapIt].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+					memSum += memoryProperties.memoryHeaps[heapIt].size;
+			}
+
+			// And see if it's the largest we've seen so far.
+			if (memSum > maxMemory)
+			{
+				maxMemory = memSum;
+				gpuIndex  = deviceIt;
+			}
+		}
+	}
+	m_GPUIndex = static_cast<s32>(gpuIndex);
+
+	vkb::DeviceBuilder deviceBuilder(devices[gpuIndex]);
 	auto               logicalDeviceResult = deviceBuilder.build();
 	if (!logicalDeviceResult.has_value())
 	{
@@ -319,7 +352,7 @@ bool Renderer::InitDevice()
 	}
 
 	const auto& logicalDevice = logicalDeviceResult.value();
-	m_GPU                     = device.value().physical_device;
+	m_GPU                     = devices[gpuIndex].physical_device;
 	m_Device                  = logicalDevice.device;
 
 	// Now, initialise the queue and queue family.
@@ -456,7 +489,7 @@ bool Renderer::InitPipelines()
 	VK_CHECK(vkCreatePipelineLayout(m_Device, &computeLayout, nullptr, &m_GradientPipelineLayout));
 
 	VkShaderModule shader;
-	if (!LoadShaderModule("Content/Shaders/GradientTest.spv", m_Device, &shader))
+	if (!LoadShaderModule("Content/Shaders/GradientTestSimple.spv", m_Device, &shader))
 	{
 		VULC_ERROR("Failed to load Gradient Shader");
 		return false;
@@ -513,19 +546,21 @@ bool Renderer::InitImGUI()
 
 	VK_CHECK(vkCreateDescriptorPool(m_Device, &pool_info, nullptr, &m_ImGUIDescriptorPool));
 
-	ImGui_ImplVulkan_InitInfo vulkanInitInfo = {};
-	vulkanInitInfo.Instance = m_Instance;
-	vulkanInitInfo.PhysicalDevice = m_GPU;
-	vulkanInitInfo.Device = m_Device;
-	vulkanInitInfo.Queue = m_GraphicsQueue;
-	vulkanInitInfo.DescriptorPool = m_ImGUIDescriptorPool;
-	vulkanInitInfo.MinImageCount = 3;
-	vulkanInitInfo.ImageCount = 3;
-	vulkanInitInfo.UseDynamicRendering = true;
-	vulkanInitInfo.PipelineRenderingCreateInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
-	vulkanInitInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+	ImGui_ImplVulkan_InitInfo vulkanInitInfo   = {};
+	vulkanInitInfo.Instance                    = m_Instance;
+	vulkanInitInfo.PhysicalDevice              = m_GPU;
+	vulkanInitInfo.Device                      = m_Device;
+	vulkanInitInfo.Queue                       = m_GraphicsQueue;
+	vulkanInitInfo.DescriptorPool              = m_ImGUIDescriptorPool;
+	vulkanInitInfo.MinImageCount               = 3;
+	vulkanInitInfo.ImageCount                  = 3;
+	vulkanInitInfo.UseDynamicRendering         = true;
+	vulkanInitInfo.PipelineRenderingCreateInfo = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO, .pNext = nullptr
+	};
+	vulkanInitInfo.PipelineRenderingCreateInfo.colorAttachmentCount    = 1;
 	vulkanInitInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &m_SwapchainImageFormat;
-	vulkanInitInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+	vulkanInitInfo.MSAASamples                                         = VK_SAMPLE_COUNT_1_BIT;
 
 	VULC_CHECK(ImGui_ImplVulkan_Init(&vulkanInitInfo), "Failed to init imgui vulkan backend");
 	VULC_CHECK(ImGui_ImplVulkan_CreateFontsTexture(), "Failed to init imgui fonts texture");

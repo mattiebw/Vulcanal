@@ -119,8 +119,8 @@ struct SemVer
 	}
 
 	explicit SemVer(const u64 packed)
-		: Major(static_cast<u16>((packed >> 48) & 0xffff)),
-		  Minor(static_cast<u16>((packed >> 32) & 0xffff)),
+		: Major(static_cast<u16>((packed >> 32) & 0xffff)),
+		  Minor(static_cast<u16>((packed >> 16) & 0xffff)),
 		  Patch(static_cast<u16>(packed & 0xffff))
 	{
 	}
@@ -153,7 +153,7 @@ struct SemVer
 
 	NODISCARD u64 Packed() const
 	{
-		return (static_cast<u64>(Major) << 48) | (static_cast<u64>(Minor) << 32) | static_cast<u64>(Patch);
+		return (static_cast<u64>(Major) << 32) | (static_cast<u64>(Minor) << 16) | static_cast<u64>(Patch);
 	}
 };
 

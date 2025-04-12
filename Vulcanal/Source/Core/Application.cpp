@@ -3,6 +3,7 @@
 
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_messagebox.h>
+#include <SDL3/SDL_filesystem.h>
 
 #ifndef VULC_NO_IMGUI
 #include <imgui.h>
@@ -12,13 +13,16 @@
 
 #include "Core/Input/Input.h"
 
-Application* Application::s_Instance = nullptr;
+Application* Application::s_Instance      = nullptr;
+bool         Application::s_ShouldRestart = false;
+s32          Application::s_SelectedGPU   = -1;
 
 Application::Application(ApplicationSpecification spec)
 	: m_Specification(std::move(spec)),
 	  m_Window(Window({.Title = m_Specification.Name, .Size = {1280, 720}, .Fullscreen = false, .Resizable = true}))
 {
 	VULC_ASSERT(!m_Specification.Name.empty(), "Application name cannot be empty");
+	VULC_ASSERT(!m_Specification.Author.empty(), "Application author cannot be empty");
 	VULC_ASSERT(m_Specification.Version.Packed() > 0, "Application version must be greater than 0");
 }
 
@@ -27,7 +31,9 @@ bool Application::Initialise()
 	VULC_ASSERT(!s_Instance, "Application already initialised?");
 	s_Instance = this;
 
-	VULC_INFO("Initialising application: {}", m_Specification.Name);
+	InitLog(SDL_GetPrefPath(m_Specification.Author.c_str(), m_Specification.Name.c_str()));
+
+	VULC_INFO("Initialising application: {} by {}", m_Specification.Name, m_Specification.Author);
 	auto workingDir = std::filesystem::current_path().string();
 	VULC_INFO("Working directory: {}", workingDir);
 
@@ -42,7 +48,7 @@ bool Application::Initialise()
 	// Bindings to window events.
 	m_Window.OnWindowClose.BindMethod(this, &Application::OnWindowClosed);
 
-	m_Window.OnSDLEvent.BindMethod(this, &Application::OnSDLEvent);
+	m_Window.OnSDLEvent.BindStatic(&Application::OnSDLEvent);
 
 	m_Window.OnKeyboardEvent.BindLambda([this](const SDL_KeyboardEvent& event)
 	{
@@ -68,11 +74,12 @@ bool Application::Initialise()
 		return false;
 	}
 
-	if (!m_Renderer.Init({.EnableValidationLayers = true, .App = this}))
+	if (!m_Renderer.Init({.EnableValidationLayers = true, .App = this, .GPUIndexOverride = s_SelectedGPU}))
 	{
 		// The renderer will do its own error logging.
 		return false;
 	}
+	s_SelectedGPU = m_Renderer.GetSelectedGPUIndex();
 
 	return true;
 }
@@ -98,11 +105,26 @@ void Application::Run()
 		if (Input::IsKeyDownThisFrame(Scancode::Escape))
 			Close();
 
-		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplSDL3_NewFrame();
-		ImGui::NewFrame();
-		ImGui::ShowDemoWindow();
-		// ImGUI drawing goes here.
+		BeginImGUI();
+
+		// ImGUI commands goes here.
+		ImGui::Begin("Test");
+		ImGui::Checkbox("Should Restart", &s_ShouldRestart);
+		const auto& gpuNames = m_Renderer.GetGPUNames();
+		if (ImGui::BeginCombo("GPU", gpuNames[s_SelectedGPU].c_str()))
+		{
+			for (s32 i = 0; i < static_cast<s32>(gpuNames.size()); i++)
+			{
+				const bool isSelected = (i == s_SelectedGPU);
+				if (ImGui::Selectable(gpuNames[i].c_str(), isSelected))
+					s_SelectedGPU = i;
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::End();
+
 		ImGui::Render();
 
 		m_Renderer.Render();
@@ -127,7 +149,19 @@ void Application::Shutdown()
 	if (m_Window.IsValid())
 		m_Window.Destroy();
 
+	// We'll only shutdown the log fully if we're not restarting.
+	// If we are restarting, we don't want to re-initialise the log, as that'll create a new log file.
+	if (ShouldRestart())
+		ShutdownLog();
+
 	s_Instance = nullptr;
+}
+
+void Application::BeginImGUI()
+{
+	ImGui_ImplVulkan_NewFrame();
+	ImGui_ImplSDL3_NewFrame();
+	ImGui::NewFrame();
 }
 
 bool Application::OnSDLEvent(const SDL_Event& e)

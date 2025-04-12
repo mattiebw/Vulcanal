@@ -13,6 +13,7 @@
 extern std::shared_ptr<spdlog::logger> g_VulcanalLogger;
 
 void InitLog(const char *prefPath);
+void ShutdownLog();
 void AddSinkToLog(const spdlog::sink_ptr &sink);
 
 #ifndef VULC_NO_LOG
@@ -41,68 +42,3 @@ void AddSinkToLog(const spdlog::sink_ptr &sink);
 	#define VULC_ERROR_NO_NEWLINE(format, ...)     
 	#define VULC_CRITICAL_NO_NEWLINE(format, ...)  
 #endif
-
-template <>
-struct fmt::formatter<glm::ivec2>
-{
-public:
-	constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
-
-	template <typename Context>
-	constexpr auto format(const glm::ivec2 &vec, Context &ctx) const
-	{
-		return fmt::format_to(ctx.out(), "({}, {})", vec.x, vec.y);
-	}
-};
-
-template <>
-struct fmt::formatter<glm::ivec3>
-{
-public:
-	constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
-
-	template <typename Context>
-	constexpr auto format(const glm::ivec3 &vec, Context &ctx) const
-	{
-		return fmt::format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
-	}
-};
-
-template <>
-struct fmt::formatter<glm::vec2>
-{
-public:
-	constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
-
-	template <typename Context>
-	constexpr auto format(const glm::vec2 &vec, Context &ctx) const
-	{
-		return fmt::format_to(ctx.out(), "({}, {})", vec.x, vec.y);
-	}
-};
-
-template <>
-struct fmt::formatter<glm::vec3>
-{
-public:
-	constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
-
-	template <typename Context>
-	constexpr auto format(const glm::vec3 &vec, Context &ctx) const
-	{
-		return fmt::format_to(ctx.out(), "({}, {}, {})", vec.x, vec.y, vec.z);
-	}
-};
-
-template <>
-struct fmt::formatter<glm::vec4>
-{
-public:
-	constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
-
-	template <typename Context>
-	constexpr auto format(const glm::vec4 &vec, Context &ctx) const
-	{
-		return fmt::format_to(ctx.out(), "({}, {}, {}, {})", vec.x, vec.y, vec.z, vec.w);
-	}
-};
