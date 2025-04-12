@@ -45,7 +45,7 @@ project "Vulcanal"
 	files { 
 		"Vulcanal/Include/**.h", "Vulcanal/Include/**.hpp", 
 		"Vulcanal/Source/**.cpp", "Vulcanal/Source/**.c",
-		"Vulcanal/Content/**",
+		"Content/**",
 		"TODO.md", "README.md",
 	}
 
@@ -141,10 +141,10 @@ project "Vulcanal"
 	}
 
 	filter "system:windows"
-	 	prebuildcommands { "call \"../Scripts/RunPreprocessor.bat\" \"../../../../../Build/%{prj.name}/" .. outputdir .. "/Content/\"" }
+	 	prebuildcommands { "call \"../Scripts/RunPreprocessor.bat\" \"../../../../../Build/%{prj.name}/" .. outputdir .. "/Content/\" \"%{cfg.buildcfg}\"" }
 
 	filter "system:linux"
-		prebuildcommands { "../Scripts/RunPreprocessor.sh \"../../../../../Build/%{prj.name}/" .. outputdir .. "/Content/\"" }
+		prebuildcommands { "../Scripts/RunPreprocessor.sh \"../../../../../Build/%{prj.name}/" .. outputdir .. "/Content/\" \"%{cfg.buildcfg}\"" }
 
 	filter { "system:linux", "files:Vulcanal/Source/Vendor/stb.cpp" }
 		optimize "On" -- MW @hack: stb doesn't compile properly with GCC without optimizations (@credit https://git.suyu.dev/suyu/suyu/pulls/63)

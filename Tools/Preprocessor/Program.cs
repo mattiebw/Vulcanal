@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Globalization;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 
@@ -25,19 +26,19 @@ internal struct PreprocessorSettings
     /// MW @todo: Implement
     /// </summary>
     public List<string> IgnoredFilePatterns { get; set; } = [];
-    
+
     /// <summary>
     /// Paths to add to the system "PATH" variable for all spawned processes, if they exist.
     /// Can be useful for limited systems where you can't edit the PATH for the entire system,
     /// but you still want to add a path for the preprocessor to use.
     /// </summary>
     public List<string> SpeculativePathAdditions { get; set; } = [];
-    
+
     /// <summary>
     /// Library files to copy to the build directory.
     /// </summary>
     public Dictionary<string, List<LibraryToCopy>> LibraryCopies { get; set; } = [];
-    
+
     /// <summary>
     /// Other misc settings to be set for the different processors.
     /// </summary>
@@ -54,7 +55,9 @@ internal struct PreprocessorSettings
 internal static class Program
 {
     private static readonly Dictionary<string, DateTime> FileLastProcessed = [];
-    private const string FileLastProcessedFileName = "AssetsLastProcessed.txt";
+    
+    // File to save the last processed times to. Updated at startup to include the configuration.
+    private static string _fileLastProcessedFileName = "";
 
     // Map of file extensions -> the processor and its current priority.
     private static readonly Dictionary<string, (IProcessor, int)> AssetProcessors = [];
@@ -63,40 +66,50 @@ internal static class Program
     private static (IProcessor?, int) _globalProcessor = (null, 0);
 
     // Preprocessor settings! Contains library copies, ignored file patterns, and processor settings (such as file extensions).
-    public static PreprocessorSettings PreprocessorSettings = new PreprocessorSettings();
+    public static PreprocessorSettings PreprocessorSettings = new();
+    public static string ContentDir = "", OutputDir = "";
+    public static string Platform = "";
+    public static string Configuration = "";
 
     private static void Main(string[] args)
     {
-        if (args.Length != 3)
+        if (args.Length != 4)
         {
             Log.Error(
-                $"Give the content source directory as the first argument, and the content output directory as the second, and the platform as the third. ({args.Length} args given)");
+                $"Give the content source directory as the first argument, and the content output directory as " +
+                $"the second, the platform as the third, and the configuration as the fourth. ({args.Length} args given)");
             Console.ResetColor();
             Environment.ExitCode = -1;
             return;
         }
 
-        var contentDir = Path.GetFullPath(args[0]);
-        var outputDir = Path.GetFullPath(args[1]);
+        ContentDir = Path.GetFullPath(args[0]);
+        OutputDir = Path.GetFullPath(args[1]);
+        Platform = args[2];
+        Configuration = args[3];
         
-        if (!Directory.Exists(contentDir))
+        // We update the file name to include the platform and configuration - this means that assets will be 
+        // reprocessed for every platform/configuration combination.
+        _fileLastProcessedFileName = $"AssetLastProcessedTimes_{Platform}_{Configuration}.txt";
+
+        if (!Directory.Exists(ContentDir))
         {
-            Log.Error($"Content directory {contentDir} does not exist.");
+            Log.Error($"Content directory {ContentDir} does not exist.");
             Environment.ExitCode = -1;
             return;
         }
-        
-        if (!Directory.Exists(outputDir))
-        {
-            Log.Warning($"Output directory {outputDir} does not exist; creating it.");
-            Directory.CreateDirectory(outputDir);
-        }
-        
-        Log.Info(
-            $"Running Preprocessor, with:\n\tContent directory: {contentDir}\n\tOutput directory: {outputDir}\n\tPlatform: {args[2]}");
 
-        LoadSettings(contentDir);
-        
+        if (!Directory.Exists(OutputDir))
+        {
+            Log.Warning($"Output directory {OutputDir} does not exist; creating it.");
+            Directory.CreateDirectory(OutputDir);
+        }
+
+        Log.Info(
+            $"Running Preprocessor, with:\n\tContent directory: {ContentDir}\n\tOutput directory: {OutputDir}\n\tPlatform: {args[2]}");
+
+        LoadSettings();
+
         // Add our speculative path additions.
         if (Environment.OSVersion.Platform == PlatformID.Win32NT)
         {
@@ -106,19 +119,20 @@ internal static class Program
                 if (Directory.Exists(path))
                     newPath.Append(';').Append(path);
             }
+
             Environment.SetEnvironmentVariable("PATH", newPath.ToString(), EnvironmentVariableTarget.Process);
         }
-        
+
         LoadLastProcessedTimes();
         LoadProcessors();
-        DoLibCopies(contentDir, outputDir, args[2]);
-        DoAssetProcessing(contentDir, outputDir);
+        DoLibCopies();
+        DoAssetProcessing();
         SaveLastProcessedTimes();
 
         Log.ResetLog();
     }
 
-    private static void LoadSettings(string sourceDirectory)
+    private static void LoadSettings()
     {
         var jsonSettings = new JsonSerializerOptions
         {
@@ -127,7 +141,7 @@ internal static class Program
             WriteIndented = true
         };
 
-        var settingsFile = Path.Join(sourceDirectory, "preprocessor_settings.json");
+        var settingsFile = Path.Join(ContentDir, "preprocessor_settings.json");
         if (!File.Exists(settingsFile))
         {
             Log.Warning(
@@ -157,14 +171,14 @@ internal static class Program
         return;
 #endif
 
-        if (!File.Exists(FileLastProcessedFileName))
+        if (!File.Exists(_fileLastProcessedFileName))
         {
             Log.Warning(
-                $"No asset last processed times found (checked for {FileLastProcessedFileName} in {Environment.CurrentDirectory})");
+                $"No asset last processed times found (checked for {_fileLastProcessedFileName} in {Environment.CurrentDirectory})");
             return;
         }
 
-        var fileData = File.ReadAllText(FileLastProcessedFileName);
+        var fileData = File.ReadAllText(_fileLastProcessedFileName);
         string[] lines = fileData.Split("\n");
 
         foreach (var line in lines)
@@ -180,7 +194,7 @@ internal static class Program
                 continue;
             }
 
-            FileLastProcessed.Add(parts[0], DateTime.Parse(parts[1]));
+            FileLastProcessed.Add(parts[0], DateTime.Parse(parts[1], CultureInfo.InvariantCulture).ToUniversalTime());
         }
 
         Log.Info($"Loaded {FileLastProcessed.Count} asset last processed times.");
@@ -222,21 +236,21 @@ internal static class Program
             });
     }
 
-    private static void DoLibCopies(string sourceDirectory, string outputDirectory, string platform)
+    private static void DoLibCopies()
     {
-        if (!PreprocessorSettings.LibraryCopies.TryGetValue(platform, out var copies))
+        if (!PreprocessorSettings.LibraryCopies.TryGetValue(Platform, out var copies))
             return;
 
         foreach (var libCopy in copies)
         {
-            string input = Path.Join(sourceDirectory, libCopy.RelativePath);
+            string input = Path.Join(ContentDir, libCopy.RelativePath);
             if (!File.Exists(input))
             {
                 Log.Warning($"Library copy file {input} does not exist; skipping.");
                 continue;
             }
 
-            string output = Path.Join(outputDirectory, libCopy.OutputRelativePath, Path.GetFileName(input));
+            string output = Path.Join(OutputDir, libCopy.OutputRelativePath, Path.GetFileName(input));
             if (File.Exists(output))
             {
                 Log.Trace($"Library file \"{input}\" already exists at \"{output}\"; skipping.");
@@ -255,27 +269,19 @@ internal static class Program
         }
     }
 
-    private static void DoAssetProcessing(string sourceDirectory, string outputDirectory)
+    private static void DoAssetProcessing()
     {
-        if (!Directory.Exists(sourceDirectory))
-        {
-            Log.Error($"Provided source directory \"{sourceDirectory}\" does not exist.");
-            return;
-        }
-
-        if (!Directory.Exists(outputDirectory))
-        {
-            Log.Warning($"Provided output directory \"{outputDirectory}\" does not exist; creating it.");
-            Directory.CreateDirectory(outputDirectory);
-        }
-
-        var files = Directory.GetFiles(sourceDirectory, "*", SearchOption.AllDirectories);
+        var files = Directory.GetFiles(ContentDir, "*", SearchOption.AllDirectories);
         foreach (var file in files)
         {
             if (file.EndsWith("preprocessor_settings.json"))
                 continue;
 
             var lastWrite = File.GetLastWriteTime(file);
+            lastWrite = lastWrite
+                .ToUniversalTime(); // Prevent issues with local time zones - without this, the time would change
+            // every time we ran the preprocessor; in BST for example, which is +1 hour from
+            // UTC, the last modified time would jump 1 hour every time we ran the preprocessor.
             if (FileLastProcessed.TryGetValue(file, out var lastProcessedTime))
             {
                 if (lastProcessedTime.AddSeconds(1) >=
@@ -284,7 +290,7 @@ internal static class Program
             }
 
             var ext = Path.GetExtension(file);
-            var outputFilename = Path.Join(outputDirectory, Path.GetRelativePath(sourceDirectory, file));
+            var outputFilename = Path.Join(OutputDir, Path.GetRelativePath(ContentDir, file));
 
             if (AssetProcessors.ContainsKey(ext))
             {
@@ -295,7 +301,7 @@ internal static class Program
                 catch (Exception e)
                 {
                     Log.Error(
-                        $"Failed to import file {Path.GetRelativePath(sourceDirectory, file)} with processor {AssetProcessors[ext].Item1.GetType().Name}: {e.Message}");
+                        $"Failed to import file {Path.GetRelativePath(ContentDir, file)} with processor {AssetProcessors[ext].Item1.GetType().Name}: {e.Message}");
                     continue;
                 }
             }
@@ -308,7 +314,7 @@ internal static class Program
                 catch (Exception e)
                 {
                     Log.Error(
-                        $"Failed to import file {Path.GetRelativePath(sourceDirectory, file)} with processor {_globalProcessor.Item1.GetType().Name}: {e.Message}");
+                        $"Failed to import file {Path.GetRelativePath(ContentDir, file)} with processor {_globalProcessor.Item1.GetType().Name}: {e.Message}");
                     continue;
                 }
             }
@@ -335,10 +341,10 @@ internal static class Program
         foreach (var (file, date) in FileLastProcessed)
         {
             // Our format for this file is the full file name, a semicolon, and the last processed time in UTC format.
-            output.AppendLine($"{file};{date.ToString("u")}");
+            output.AppendLine($"{file};{date.ToString("u", CultureInfo.InvariantCulture)}");
         }
 
-        File.WriteAllText(FileLastProcessedFileName, output.ToString());
+        File.WriteAllText(_fileLastProcessedFileName, output.ToString());
         Log.Info("Saved asset last processed times.");
     }
 }
