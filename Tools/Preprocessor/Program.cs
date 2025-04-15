@@ -76,7 +76,7 @@ internal static class Program
         if (args.Length != 4)
         {
             Log.Error(
-                $"Give the content source directory as the first argument, and the content output directory as " +
+                $"Give the content source directory as the first argument, the content output directory as " +
                 $"the second, the platform as the third, and the configuration as the fourth. ({args.Length} args given)");
             Console.ResetColor();
             Environment.ExitCode = -1;
