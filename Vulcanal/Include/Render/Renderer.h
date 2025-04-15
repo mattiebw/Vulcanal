@@ -94,6 +94,8 @@ protected:
 	                              const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 	                              void*                                       pUserData);
 
+	static void CheckImGUIVkResult(VkResult result);
+
 	// Core vulkan objects
 	Window*                  m_Window         = nullptr;
 	vkb::Instance            m_VKBInstance    = {};

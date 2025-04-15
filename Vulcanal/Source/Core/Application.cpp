@@ -217,6 +217,8 @@ bool Application::InitImGUI() const
 {
 	ImGui::CreateContext();
 	VULC_CHECK(ImGui_ImplSDL3_InitForVulkan(m_Window.GetSDLWindow()), "Failed to init imgui SDL3 backend for Vulkan");
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_DockingEnable;
 
 	return true;
 }

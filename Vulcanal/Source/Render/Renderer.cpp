@@ -578,7 +578,8 @@ bool Renderer::InitImGUI()
 	};
 	vulkanInitInfo.PipelineRenderingCreateInfo.colorAttachmentCount    = 1;
 	vulkanInitInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &m_SwapchainImageFormat;
-	vulkanInitInfo.MSAASamples                                         = VK_SAMPLE_COUNT_1_BIT;
+	vulkanInitInfo.MSAASamples                                         = VK_SAMPLE_COUNT_8_BIT;
+	vulkanInitInfo.CheckVkResultFn = &CheckImGUIVkResult; 
 
 	VULC_CHECK(ImGui_ImplVulkan_Init(&vulkanInitInfo), "Failed to init imgui vulkan backend");
 	VULC_CHECK(ImGui_ImplVulkan_CreateFontsTexture(), "Failed to init imgui fonts texture");
@@ -618,6 +619,9 @@ void Renderer::DrawImGUI(VkCommandBuffer cmd, VkImageView targetImage)
 	vkCmdBeginRendering(cmd, &renderInfo);
 
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+
+	// ImGui::UpdatePlatformWindows();
+	// ImGui::RenderPlatformWindowsDefault();
 
 	vkCmdEndRendering(cmd);
 }
@@ -829,4 +833,9 @@ VkBool32 Renderer::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      mes
 	VULC_ASSERT(messageSeverity != VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT, "{}", message);
 
 	return VK_FALSE;
+}
+
+void Renderer::CheckImGUIVkResult(VkResult result)
+{
+	VK_CHECK(result);
 }
