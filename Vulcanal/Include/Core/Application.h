@@ -39,6 +39,7 @@ public:
 
 	NODISCARD FORCEINLINE static Application* Get() { return s_Instance; }
 
+	MulticastDelegate<> OnDrawIMGui;
 	CascadingMulticastDelegate<false> OnApplicationCloseRequested;
 
 protected:

@@ -56,6 +56,13 @@ bool Renderer::Init(RendererSpecification spec)
 
 	if (!InitImGUI())
 		return false;
+	
+	m_PushConstants.Colour1 = glm::vec4(1, 0, 0, 1);
+	m_PushConstants.Colour2 = glm::vec4(0, 1, 0, 1);
+	m_PushConstants.Colour3 = glm::vec4(0, 0, 1, 1);
+	m_PushConstants.ColourPoints = glm::vec3(0.1f, 0.5f, 0.8f);
+
+	m_Spec.App->OnDrawIMGui.BindMethod(this, &Renderer::OnDrawIMGui);
 
 	return true;
 }
@@ -486,10 +493,18 @@ bool Renderer::InitPipelines()
 	computeLayout.pSetLayouts                = &m_DrawImageDescriptorLayout;
 	computeLayout.setLayoutCount             = 1;
 
+	VkPushConstantRange pushConstant = {};
+	pushConstant.offset = 0;
+	pushConstant.size = sizeof(PushConstants);
+	pushConstant.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+	computeLayout.pPushConstantRanges = &pushConstant;
+	computeLayout.pushConstantRangeCount = 1;
+
 	VK_CHECK(vkCreatePipelineLayout(m_Device, &computeLayout, nullptr, &m_GradientPipelineLayout));
 
 	VkShaderModule shader;
-	if (!LoadShaderModule("Content/Shaders/GradientTestSimple.spv", m_Device, &shader))
+	if (!LoadShaderModule("Content/Shaders/GradientTest.spv", m_Device, &shader))
 	{
 		VULC_ERROR("Failed to load Gradient Shader");
 		return false;
@@ -584,6 +599,9 @@ void Renderer::Clear(VkCommandBuffer cmd) const
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_GradientPipeline);
 	vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_GradientPipelineLayout, 0, 1, &m_DescriptorSet, 0,
 	                        nullptr);
+
+	vkCmdPushConstants(cmd, m_GradientPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &m_PushConstants);
+	
 	vkCmdDispatch(cmd, static_cast<u32>(std::ceil(m_DrawExtent.width / 16)),
 	              static_cast<u32>(std::ceil(m_DrawExtent.height / 16)), 1);
 }
@@ -599,6 +617,16 @@ void Renderer::DrawImGUI(VkCommandBuffer cmd, VkImageView targetImage)
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
 
 	vkCmdEndRendering(cmd);
+}
+
+void Renderer::OnDrawIMGui()
+{
+	ImGui::Begin("Gradient");
+	ImGui::DragFloat4("Colour 1", &m_PushConstants.Colour1.r, 0.01f, 0, 1);
+	ImGui::DragFloat4("Colour 2", &m_PushConstants.Colour2.r, 0.01f, 0, 1);
+	ImGui::DragFloat4("Colour 3", &m_PushConstants.Colour3.r, 0.01f, 0, 1);
+	ImGui::DragFloat3("Colour Points", &m_PushConstants.ColourPoints.r, 0.01f, 0, 1);
+	ImGui::End();
 }
 
 void Renderer::PrintDeviceInfo()

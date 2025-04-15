@@ -75,6 +75,7 @@ protected:
 	// Drawing functions
 	void Clear(VkCommandBuffer cmd) const;
 	void DrawImGUI(VkCommandBuffer cmd, VkImageView targetImage);
+	void OnDrawIMGui();
 
 	// Event functions
 	bool OnWindowResize(const glm::ivec2& newSize);

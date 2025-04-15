@@ -107,8 +107,10 @@ void Application::Run()
 
 		BeginImGUI();
 
+		OnDrawIMGui.Execute();
+		
 		// ImGUI commands goes here.
-		ImGui::Begin("Test");
+		ImGui::Begin("App Settings");
 		ImGui::Checkbox("Should Restart", &s_ShouldRestart);
 		const auto& gpuNames = m_Renderer.GetGPUNames();
 		if (ImGui::BeginCombo("GPU", gpuNames[s_SelectedGPU].c_str()))
