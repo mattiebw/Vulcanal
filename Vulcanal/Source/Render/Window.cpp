@@ -47,6 +47,8 @@ void Window::PollEvents()
 		{
 		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
 			{
+				if (windowEvent.window.windowID != SDL_GetWindowID(m_Window))
+					break;
 				OnWindowClose.Execute();
 				break;
 			}

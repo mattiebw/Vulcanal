@@ -47,6 +47,7 @@ public:
 
 	bool Init(RendererSpecification spec);
 	void Render();
+	void Present();
 	void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 	void Shutdown();
 
@@ -116,6 +117,7 @@ protected:
 	std::vector<VkImage>     m_SwapchainImages      = {};
 	std::vector<VkImageView> m_SwapchainImageViews  = {};
 	bool m_SwapchainDirty = false;
+	u32 m_SwapchainImageIndex = 0;
 
 	// Descriptors and pipelines
 	DescriptorAllocator   m_DescriptorAllocator       = {};

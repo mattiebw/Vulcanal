@@ -133,6 +133,11 @@ void Application::Run()
 		ImGui::Render();
 
 		m_Renderer.Render();
+
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+
+		m_Renderer.Present();
 	}
 }
 

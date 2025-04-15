@@ -87,9 +87,8 @@ void Renderer::Render()
 	// we actually start executing the commands. When we submit, we also provide a  semaphore (frame.RenderSemaphore),
 	// to be signalled when the command buffer is done executing. We use this to know when we can present the swapchain
 	// image to the screen - the call to vkQueuePresent takes the render semaphore as a wait semaphore parameter.
-	u32 swapchainImageIndex = 0;
 	VK_CHECK(
-		vkAcquireNextImageKHR(m_Device, m_Swapchain, 1000000000, frame.SwapchainSemaphore, nullptr, &swapchainImageIndex
+		vkAcquireNextImageKHR(m_Device, m_Swapchain, 1000000000, frame.SwapchainSemaphore, nullptr, &m_SwapchainImageIndex
 		));
 
 	// Reset our command buffer.
@@ -113,18 +112,18 @@ void Renderer::Render()
 
 	// Okay, we're done drawing - lets prepare our draw and swapchain images for the blit.
 	TransitionImage(commandBuffer, m_DrawImage.Image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED,
+	TransitionImage(commandBuffer, m_SwapchainImages[m_SwapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED,
 	                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 	// Do the actual blit.
-	BlitImageToImage(commandBuffer, m_DrawImage.Image, m_SwapchainImages[swapchainImageIndex], m_DrawExtent,
+	BlitImageToImage(commandBuffer, m_DrawImage.Image, m_SwapchainImages[m_SwapchainImageIndex], m_DrawExtent,
 	                 m_SwapchainExtent);
 
 #ifndef VULC_NO_IMGUI
-	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	TransitionImage(commandBuffer, m_SwapchainImages[m_SwapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 	                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	DrawImGUI(commandBuffer, m_SwapchainImageViews[swapchainImageIndex]);
-	TransitionImage(commandBuffer, m_SwapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	DrawImGUI(commandBuffer, m_SwapchainImageViews[m_SwapchainImageIndex]);
+	TransitionImage(commandBuffer, m_SwapchainImages[m_SwapchainImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 #else
 	// Transition our swapchain image to the required format for presenting.
@@ -146,16 +145,19 @@ void Renderer::Render()
 
 	// This is the big moment: submit our command buffer to the GPU.
 	VK_CHECK(vkQueueSubmit2(m_GraphicsQueue, 1, &submit, frame.RenderFence));
+}
 
+void Renderer::Present()
+{
 	// Present our swapchain.
 	VkPresentInfoKHR presentInfo   = {};
 	presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.pNext              = nullptr;
 	presentInfo.pSwapchains        = &m_Swapchain;
 	presentInfo.swapchainCount     = 1;
-	presentInfo.pWaitSemaphores    = &frame.RenderSemaphore;
+	presentInfo.pWaitSemaphores    = &GetCurrentFrame().RenderSemaphore;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pImageIndices      = &swapchainImageIndex;
+	presentInfo.pImageIndices      = &m_SwapchainImageIndex;
 
 	VK_CHECK(vkQueuePresentKHR(m_GraphicsQueue, &presentInfo));
 
@@ -578,7 +580,7 @@ bool Renderer::InitImGUI()
 	};
 	vulkanInitInfo.PipelineRenderingCreateInfo.colorAttachmentCount    = 1;
 	vulkanInitInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &m_SwapchainImageFormat;
-	vulkanInitInfo.MSAASamples                                         = VK_SAMPLE_COUNT_8_BIT;
+	vulkanInitInfo.MSAASamples                                         = VK_SAMPLE_COUNT_1_BIT;
 	vulkanInitInfo.CheckVkResultFn = &CheckImGUIVkResult; 
 
 	VULC_CHECK(ImGui_ImplVulkan_Init(&vulkanInitInfo), "Failed to init imgui vulkan backend");
@@ -619,10 +621,7 @@ void Renderer::DrawImGUI(VkCommandBuffer cmd, VkImageView targetImage)
 	vkCmdBeginRendering(cmd, &renderInfo);
 
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
-
-	// ImGui::UpdatePlatformWindows();
-	// ImGui::RenderPlatformWindowsDefault();
-
+	
 	vkCmdEndRendering(cmd);
 }
 
