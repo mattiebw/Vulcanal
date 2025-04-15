@@ -125,6 +125,9 @@ void Application::Run()
 			}
 			ImGui::EndCombo();
 		}
+		bool vsync = m_Renderer.GetSpecification().VSync;
+		if (ImGui::Checkbox("VSync", &vsync))
+			m_Renderer.SetVSync(vsync);
 		ImGui::End();
 
 		ImGui::Render();

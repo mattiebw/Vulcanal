@@ -11,6 +11,7 @@ struct RendererSpecification
 	bool         EnableValidationLayers = false;
 	Application* App                    = nullptr;
 	int          GPUIndexOverride       = -1;
+	bool         VSync = true;
 };
 
 struct FrameData
@@ -49,8 +50,12 @@ public:
 	void ImmediateSubmit(std::function<void(VkCommandBuffer cmd)>&& function) const;
 	void Shutdown();
 
+	// Setters
+	void SetVSync(bool vsync);
+
 	NODISCARD FORCEINLINE const std::vector<std::string>& GetGPUNames() const { return m_GPUNames; }
 	NODISCARD FORCEINLINE s32                             GetSelectedGPUIndex() const { return m_GPUIndex; }
+	NODISCARD FORCEINLINE const RendererSpecification&    GetSpecification() const { return m_Spec; }
 
 protected:
 	// Initialisation functions
@@ -67,6 +72,7 @@ protected:
 	// Structure creation and destruction functions
 	bool CreateSwapchain(u32 width, u32 height);
 	bool DestroySwapchain();
+	void RecreateSwapchain();
 	void ShutdownFrameData(FrameData& frameData) const;
 
 	// Utility functions
@@ -107,6 +113,7 @@ protected:
 	VkExtent2D               m_SwapchainExtent      = {};
 	std::vector<VkImage>     m_SwapchainImages      = {};
 	std::vector<VkImageView> m_SwapchainImageViews  = {};
+	bool m_SwapchainDirty = false;
 
 	// Descriptors and pipelines
 	DescriptorAllocator   m_DescriptorAllocator       = {};

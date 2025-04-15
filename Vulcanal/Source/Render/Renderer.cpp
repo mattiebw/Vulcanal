@@ -69,6 +69,9 @@ bool Renderer::Init(RendererSpecification spec)
 
 void Renderer::Render()
 {
+	if (m_SwapchainDirty)
+		RecreateSwapchain();
+	
 	FrameData& frame = GetCurrentFrame();
 
 	// Let's wait for our render fence.
@@ -647,28 +650,14 @@ void Renderer::PrintDeviceInfo()
 
 bool Renderer::OnWindowResize(const glm::ivec2& newSize)
 {
-	VULC_ASSERT(m_Device);
-	vkDeviceWaitIdle(m_Device);
-	DestroySwapchain();
-	CreateSwapchain(newSize.x, newSize.y);
-
-	// BODGE FIX FOR RESIZING
-	VkDescriptorImageInfo imageInfo = {};
-	imageInfo.imageLayout           = VK_IMAGE_LAYOUT_GENERAL;
-	imageInfo.imageView             = m_DrawImage.ImageView;
-
-	VkWriteDescriptorSet drawImageWrite = {};
-	drawImageWrite.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	drawImageWrite.pNext                = nullptr;
-	drawImageWrite.dstBinding           = 0;
-	drawImageWrite.dstSet               = m_DescriptorSet;
-	drawImageWrite.descriptorCount      = 1;
-	drawImageWrite.descriptorType       = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	drawImageWrite.pImageInfo           = &imageInfo;
-
-	vkUpdateDescriptorSets(m_Device, 1, &drawImageWrite, 0, nullptr);
-
+	m_SwapchainDirty = true;
 	return false;
+}
+
+void Renderer::SetVSync(bool vsync)
+{
+	m_Spec.VSync = vsync;
+	m_SwapchainDirty = true;
 }
 
 bool Renderer::CreateSwapchain(u32 width, u32 height)
@@ -682,8 +671,10 @@ bool Renderer::CreateSwapchain(u32 width, u32 height)
 	                       .set_desired_format(VkSurfaceFormatKHR{
 		                       .format = m_SwapchainImageFormat, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR
 	                       })
-	                       .set_desired_present_mode(VK_PRESENT_MODE_FIFO_RELAXED_KHR)
-	                       // Relaxed VSync for now - make this customisable.
+	                       .set_desired_present_mode(
+	                       		m_Spec.VSync
+	                       		? VK_PRESENT_MODE_FIFO_RELAXED_KHR
+	                       		: VK_PRESENT_MODE_IMMEDIATE_KHR)
 	                       .set_desired_extent(width, height)
 	                       .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
 	                       .build();
@@ -767,6 +758,32 @@ bool Renderer::DestroySwapchain()
 	m_SwapchainImages.clear();
 
 	return true;
+}
+
+void Renderer::RecreateSwapchain()
+{
+	VULC_ASSERT(m_Device);
+	vkDeviceWaitIdle(m_Device);
+	DestroySwapchain();
+	CreateSwapchain(m_Spec.App->GetWindow().GetWidth(), m_Spec.App->GetWindow().GetHeight());
+
+	// BODGE FIX FOR RESIZING
+	VkDescriptorImageInfo imageInfo = {};
+	imageInfo.imageLayout           = VK_IMAGE_LAYOUT_GENERAL;
+	imageInfo.imageView             = m_DrawImage.ImageView;
+
+	VkWriteDescriptorSet drawImageWrite = {};
+	drawImageWrite.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	drawImageWrite.pNext                = nullptr;
+	drawImageWrite.dstBinding           = 0;
+	drawImageWrite.dstSet               = m_DescriptorSet;
+	drawImageWrite.descriptorCount      = 1;
+	drawImageWrite.descriptorType       = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	drawImageWrite.pImageInfo           = &imageInfo;
+
+	vkUpdateDescriptorSets(m_Device, 1, &drawImageWrite, 0, nullptr);
+
+	m_SwapchainDirty = false;
 }
 
 void Renderer::ShutdownFrameData(FrameData& frameData) const
